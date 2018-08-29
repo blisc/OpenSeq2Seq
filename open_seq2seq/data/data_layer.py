@@ -1,20 +1,20 @@
 # Copyright (c) 2017 NVIDIA Corporation
-"""Data Layer Classes"""
+"""Data layer classes"""
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
-from six.moves import range
 
 import abc
+import copy
+
 import six
 import tensorflow as tf
-import copy
+
 from open_seq2seq.utils.utils import check_params
 
 
 @six.add_metaclass(abc.ABCMeta)
 class DataLayer:
-  """Abstract class from which all data layers must inherit.
-  """
+  """Abstract class from which all data layers must inherit."""
   @staticmethod
   def get_required_params():
     """Static method with description of required parameters.
@@ -26,7 +26,7 @@ class DataLayer:
             class :meth:`__init__` method.
     """
     return {
-      'mode': ['train', 'eval', 'infer'],
+        'mode': ['train', 'eval', 'infer'],
     }
 
   @staticmethod
@@ -40,9 +40,10 @@ class DataLayer:
             class :meth:`__init__` method.
     """
     return {
-      'batch_size': int,
-      'shuffle': bool,
-      'dtype': [tf.float32, tf.float16],
+        'batch_size': int,
+        'shuffle': bool,
+        'dtype': [tf.float32, tf.float16],
+        'interactive': bool,
     }
 
   @abc.abstractmethod
@@ -79,10 +80,7 @@ class DataLayer:
         self._params['dtype'] = tf.float32
 
     if 'shuffle' not in params:
-      if self._params['mode'] == 'train':
-        self._params['shuffle'] = True
-      else:
-        self._params['shuffle'] = False
+      self._params['shuffle'] = (self._params['mode'] == 'train')
 
     if self._params['mode'] != 'train' and self._params['shuffle']:
       raise ValueError("Shuffle should not be performed in eval or infer modes")
@@ -121,6 +119,23 @@ class DataLayer:
     corresponding target object (i.e. tensors taht are passed to the decoder and
     loss, e.g. target sequence and target length). Note that all tensors have
     to be created inside :meth:`self.build_graph()<build_graph>` method.
+    """
+    pass
+
+  def create_interactive_placeholders(self):
+    """A function that must be defined for data layers that support interactive
+    infer. This function is intended to create placeholders that will be passed
+    to self._input_tensors that will be passed to the model.
+    """
+    pass
+
+  def create_feed_dict(self, model_in):
+    """A function that must be defined for data layers that support interactive
+    infer. Given input which is an abstract data element to be defined by the
+    data layer. The intended use is for the user to build and pass model_in from
+    the jupyter notebook. Given model_in, the data layer must preprocess the raw
+    data, and create the feed dict that defines the placeholders defined in
+    create_interactive_placeholders().
     """
     pass
 

@@ -1,14 +1,15 @@
 # Copyright (c) 2018 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
-from six.moves import range
 
 import abc
+import copy
+
 import six
 import tensorflow as tf
-import copy
-from open_seq2seq.utils.utils import check_params, cast_types
+
 from open_seq2seq.optimizers.mp_wrapper import mp_regularizer_wrapper
+from open_seq2seq.utils.utils import check_params, cast_types
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -38,11 +39,11 @@ class Decoder:
             class :meth:`__init__` method.
     """
     return {
-      'regularizer': None,  # any valid TensorFlow regularizer
-      'regularizer_params': dict,
-      'initializer': None,  # any valid TensorFlow initializer
-      'initializer_params': dict,
-      'dtype': [tf.float32, tf.float16, 'mixed'],
+        'regularizer': None,  # any valid TensorFlow regularizer
+        'regularizer_params': dict,
+        'initializer': None,  # any valid TensorFlow initializer
+        'initializer_params': dict,
+        'dtype': [tf.float32, tf.float16, 'mixed'],
     }
 
   def __init__(self, params, model, name="decoder", mode='train'):
@@ -87,24 +88,9 @@ class Decoder:
       else:
         self._params['dtype'] = tf.float32
 
-    if 'regularizer' not in self._params:
-      if self._model and 'regularizer' in self._model.params:
-        self._params['regularizer'] = self._model.params['regularizer']
-        self._params['regularizer_params'] = self._model.params['regularizer_params']
-
-    if 'regularizer' in self._params:
-      init_dict = self._params.get('regularizer_params', {})
-      self._params['regularizer'] = self._params['regularizer'](**init_dict)
-      if self._params['dtype'] == 'mixed':
-        self._params['regularizer'] = mp_regularizer_wrapper(
-          self._params['regularizer'],
-        )
-
-    if self._params['dtype'] == 'mixed':
-      self._params['dtype'] = tf.float16
-
     self._name = name
     self._mode = mode
+    self._compiled = False
 
   def decode(self, input_dict):
     """Wrapper around :meth:`self._decode() <_decode>` method.
@@ -117,11 +103,34 @@ class Decoder:
     Returns:
       see :meth:`self._decode() <_decode>` docs.
     """
+    if not self._compiled:
+      if 'regularizer' not in self._params:
+        if self._model and 'regularizer' in self._model.params:
+          self._params['regularizer'] = copy.deepcopy(
+              self._model.params['regularizer']
+          )
+          self._params['regularizer_params'] = copy.deepcopy(
+              self._model.params['regularizer_params']
+          )
+
+      if 'regularizer' in self._params:
+        init_dict = self._params.get('regularizer_params', {})
+        self._params['regularizer'] = self._params['regularizer'](**init_dict)
+        if self._params['dtype'] == 'mixed':
+          self._params['regularizer'] = mp_regularizer_wrapper(
+              self._params['regularizer'],
+          )
+
+      if self._params['dtype'] == 'mixed':
+        self._params['dtype'] = tf.float16
+      
     if 'initializer' in self.params:
       init_dict = self.params.get('initializer_params', {})
       initializer = self.params['initializer'](**init_dict)
     else:
       initializer = None
+
+    self._compiled = True
 
     with tf.variable_scope(self._name, initializer=initializer,
                            dtype=self.params['dtype']):
@@ -160,7 +169,8 @@ class Decoder:
 
           {
             "logits": logits that will be passed to Loss
-            "samples": actual decoded output, e.g. characters instead of logits
+            "outputs": list with actual decoded outputs, e.g. characters
+                       instead of logits
           }
     """
     pass

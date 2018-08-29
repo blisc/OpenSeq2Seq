@@ -1,3 +1,4 @@
+# pylint: skip-file
 from open_seq2seq.models import Image2Label
 from open_seq2seq.encoders import ResNetEncoder
 from open_seq2seq.decoders import FullyConnectedDecoder
@@ -51,11 +52,12 @@ base_params = {
   },
   "decoder": FullyConnectedDecoder,
   "decoder_params": {
-    "output_dim": 1001,
+    "output_dim": 1000,
   },
   "loss": CrossEntropyLoss,
   "data_layer": ImagenetDataLayer,
   "data_layer_params": {
     "data_dir": "data/tf-imagenet",
+    "image_size": 224,
   },
 }

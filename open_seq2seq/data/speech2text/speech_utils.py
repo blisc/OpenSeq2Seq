@@ -1,13 +1,13 @@
 # Copyright (c) 2018 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
-from six.moves import range
 
-import scipy.io.wavfile as wave
-import resampy as rs
-import python_speech_features as psf
-import numpy as np
 import math
+
+import numpy as np
+import python_speech_features as psf
+import resampy as rs
+import scipy.io.wavfile as wave
 
 
 def get_speech_features_from_file(filename, num_features, pad_to=8,
@@ -37,9 +37,16 @@ def get_speech_features_from_file(filename, num_features, pad_to=8,
   # load audio signal
   fs, signal = wave.read(filename)
   return get_speech_features(
-    signal, fs, num_features, pad_to, features_type,
-    window_size, window_stride, augmentation,
+      signal, fs, num_features, pad_to, features_type,
+      window_size, window_stride, augmentation,
   )
+
+
+def normalize_signal(signal):
+  """
+  Normalize float32 signal to [-1, 1] range
+  """
+  return signal / np.max(np.abs(signal))
 
 
 def augment_audio_signal(signal, fs, augmentation):
@@ -53,17 +60,17 @@ def augment_audio_signal(signal, fs, augmentation):
   Returns:
     np.array: np.array with augmented audio signal.
   """
-  signal_float = signal.astype(np.float32) / 32768.0
+  signal_float = normalize_signal(signal.astype(np.float32))
 
   if augmentation['time_stretch_ratio'] > 0:
     # time stretch (might be slow)
     stretch_amount = 1.0 + (2.0 * np.random.rand() - 1.0) * \
                      augmentation['time_stretch_ratio']
     signal_float = rs.resample(
-      signal_float,
-      fs,
-      int(fs * stretch_amount),
-      filter='kaiser_fast',
+        signal_float,
+        fs,
+        int(fs * stretch_amount),
+        filter='kaiser_fast',
     )
 
   # noise
@@ -72,7 +79,7 @@ def augment_audio_signal(signal, fs, augmentation):
   signal_float += np.random.randn(signal_float.shape[0]) * \
                   10.0 ** (noise_level_db / 20.0)
 
-  return (signal_float * 32768.0).astype(np.int16)
+  return (normalize_signal(signal_float) * 32767.0).astype(np.int16)
 
 
 def get_speech_features(signal, fs, num_features, pad_to=8,
@@ -93,8 +100,10 @@ def get_speech_features(signal, fs, num_features, pad_to=8,
     window_stride (float): stride of analysis window in milli-seconds.
     augmentation (dict, optional): dictionary of augmentation parameters. See
         :func:`get_speech_features_from_file` for specification and example.
+
   Returns:
     np.array: np.array of audio features with shape=[num_time_steps, num_features].
+    audio_duration (float): duration of the signal in seconds
   """
   if augmentation is not None:
     if 'time_stretch_ratio' not in augmentation:
@@ -107,18 +116,22 @@ def get_speech_features(signal, fs, num_features, pad_to=8,
       raise ValueError('noise_level_max has to be included in augmentation '
                        'when augmentation it is not None')
     signal = augment_audio_signal(signal, fs, augmentation)
+  else:
+    signal = (normalize_signal(signal.astype(np.float32)) * 32767.0).astype(np.int16)
+
+  audio_duration = len(signal) * 1.0/fs
 
   n_window_size = int(fs * window_size)
   n_window_stride = int(fs * window_stride)
 
   # making sure length of the audio is divisible by 8 (fp16 optimization)
   length = 1 + int(math.ceil(
-    (1.0 * signal.shape[0] - n_window_size) / n_window_stride)
-  )
+      (1.0 * signal.shape[0] - n_window_size) / n_window_stride
+  ))
   if pad_to > 0:
     if length % pad_to != 0:
       pad_size = (pad_to - length % pad_to) * n_window_stride
-      signal = np.pad(signal, (0, pad_size), mode='reflect')
+      signal = np.pad(signal, (0, pad_size), mode='constant')
 
   if features_type == 'spectrogram':
     frames = psf.sigproc.framesig(sig=signal,
@@ -146,11 +159,23 @@ def get_speech_features(signal, fs, num_features, pad_to=8,
                         preemph=0.97,
                         ceplifter=2*num_features,
                         appendEnergy=False)
+
+  elif features_type == 'logfbank':
+    features = psf.logfbank(signal=signal,
+                            samplerate=fs,
+                            winlen=window_size,
+                            winstep=window_stride,
+                            nfilt=num_features,
+                            nfft=512,
+                            lowfreq=0, highfreq=fs/2,
+                            preemph=0.97)
+
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
 
-  assert features.shape[0] % pad_to == 0
+  if pad_to > 0:
+    assert features.shape[0] % pad_to == 0
   m = np.mean(features)
   s = np.std(features)
   features = (features - m) / s
-  return features
+  return features, audio_duration

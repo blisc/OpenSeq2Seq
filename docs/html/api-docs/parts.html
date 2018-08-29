@@ -85,12 +85,14 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../installation-instructions.html">Installation instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../models-and-recipes.html">Models and recipes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../machine-translation.html">Machine Translation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../speech-recognition.html">Speech Recognition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../speech-synthesis.html">Speech Synthesis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../distr-training.html">Distributed training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../mixed-precision.html">Mixed precision training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../in-depth-tutorials.html">In-depth tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interactive-infer-demos.html">Interactive Infer Mode</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">API documentation</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="models.html">models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="data.html">data</a></li>
@@ -101,6 +103,9 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">parts</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="parts.rnns.html">rnns</a></li>
 <li class="toctree-l3"><a class="reference internal" href="parts.transformer.html">transformer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parts.convs2s.html">convs2s</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parts.cnns.html">cnns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parts.tacotron.html">tacotron</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="utils.html">utils</a></li>
@@ -184,16 +189,31 @@
 <li class="toctree-l2"><a class="reference internal" href="parts.rnns.html#module-parts.rnns.rnn_beam_search_decoder">rnn_beam_search_decoder</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.rnns.html#module-parts.rnns.slstm">slstm</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.rnns.html#module-parts.rnns.utils">utils</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parts.rnns.html#module-parts.rnns.zoneout">zoneout</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="parts.transformer.html">transformer</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.attention_layer">attention_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.beam_search">beam_search</a></li>
-<li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.beam_search_test">beam_search_test</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.common">common</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.embedding_layer">embedding_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.ffn_layer">ffn_layer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="parts.transformer.html#module-parts.transformer.utils">utils</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parts.convs2s.html">convs2s</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parts.convs2s.html#module-parts.convs2s.attention_wn_layer">attention_wn_layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parts.convs2s.html#module-parts.convs2s.conv_wn_layer">conv_wn_layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parts.convs2s.html#module-parts.convs2s.ffn_wn_layer">ffn_wn_layer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parts.cnns.html">cnns</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parts.cnns.html#module-parts.cnns.conv_blocks">conv_blocks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parts.tacotron.html">tacotron</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parts.tacotron.html#module-parts.tacotron.tacotron_decoder">tacotron_decoder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parts.tacotron.html#module-parts.tacotron.tacotron_helper">tacotron_helper</a></li>
 </ul>
 </li>
 </ul>

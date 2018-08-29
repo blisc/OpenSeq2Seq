@@ -1,17 +1,18 @@
 # Copyright (c) 2017 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
-from six.moves import range
+
+import codecs
+import re
 
 import nltk
-import re
-import codecs
 import tensorflow as tf
+from six.moves import range
 
-from .encoder_decoder import EncoderDecoderModel
 from open_seq2seq.data.text2text.text2text import SpecialTextTokens
 from open_seq2seq.utils.utils import deco_print, array_to_string, \
                                      text_ids_to_string
+from .encoder_decoder import EncoderDecoderModel
 
 
 def transform_for_bleu(row, vocab, ignore_special=False,
@@ -39,40 +40,42 @@ def transform_for_bleu(row, vocab, ignore_special=False,
 
 
 def calculate_bleu(preds, targets):
-  """
-  :param preds: list of lists
-  :param targets: list of lists
-  :return: bleu score - float32
+  """Function to calculate BLEU score.
+
+  Args:
+    preds: list of lists
+    targets: list of lists
+
+  Returns:
+    float32: BLEU score
   """
   bleu_score = nltk.translate.bleu_score.corpus_bleu(
-    targets, preds, #emulate_multibleu=True,
+      targets, preds, emulate_multibleu=True,
   )
   return bleu_score
 
 
 class Text2Text(EncoderDecoderModel):
-  """
-  An example class implementing classical text-to-text model.
-  """
+  """An example class implementing classical text-to-text model."""
   def _create_encoder(self):
     self.params['encoder_params']['src_vocab_size'] = (
-      self.get_data_layer().params['src_vocab_size']
+        self.get_data_layer().params['src_vocab_size']
     )
     return super(Text2Text, self)._create_encoder()
 
   def _create_decoder(self):
     self.params['decoder_params']['batch_size'] = (
-      self.params['batch_size_per_gpu']
+        self.params['batch_size_per_gpu']
     )
     self.params['decoder_params']['tgt_vocab_size'] = (
-      self.get_data_layer().params['tgt_vocab_size']
+        self.get_data_layer().params['tgt_vocab_size']
     )
     return super(Text2Text, self)._create_decoder()
 
   def _create_loss(self):
     self.params['loss_params']['batch_size'] = self.params['batch_size_per_gpu']
     self.params['loss_params']['tgt_vocab_size'] = (
-      self.get_data_layer().params['tgt_vocab_size']
+        self.get_data_layer().params['tgt_vocab_size']
     )
     return super(Text2Text, self)._create_loss()
 
@@ -80,22 +83,29 @@ class Text2Text(EncoderDecoderModel):
     input_strings, output_strings = [], []
     input_values = input_values['source_tensors']
     for input_sample, output_sample in zip(input_values, output_values):
-      output_strings.append(text_ids_to_string(
-        output_sample[0],
-        self.get_data_layer().params['target_idx2seq'],
-        S_ID=self.decoder.params['GO_SYMBOL'],
-        EOS_ID=self.decoder.params['END_SYMBOL'],
-        PAD_ID=self.decoder.params['PAD_SYMBOL'],
-        ignore_special=True, delim=' ',
-      ))
-      input_strings.append(text_ids_to_string(
-        input_sample[0],
-        self.get_data_layer().params['source_idx2seq'],
-        S_ID=self.decoder.params['GO_SYMBOL'],
-        EOS_ID=self.decoder.params['END_SYMBOL'],
-        PAD_ID=self.decoder.params['PAD_SYMBOL'],
-        ignore_special=True, delim=' ',
-      ))
+      for i in range(0, input_sample.shape[0]):  # iterate over batch dimension
+        output_strings.append(text_ids_to_string(
+            output_sample[i],
+            self.get_data_layer().params['target_idx2seq'],
+            S_ID=self.decoder.params.get('GO_SYMBOL',
+                                         SpecialTextTokens.S_ID.value),
+            EOS_ID=self.decoder.params.get('END_SYMBOL',
+                                           SpecialTextTokens.EOS_ID),
+            PAD_ID=self.decoder.params.get('PAD_SYMBOL',
+                                           SpecialTextTokens.PAD_ID),
+            ignore_special=True, delim=' ',
+        ))
+        input_strings.append(text_ids_to_string(
+            input_sample[i],
+            self.get_data_layer().params['source_idx2seq'],
+            S_ID=self.decoder.params.get('GO_SYMBOL',
+                                         SpecialTextTokens.S_ID.value),
+            EOS_ID=self.decoder.params.get('END_SYMBOL',
+                                       SpecialTextTokens.EOS_ID.value),
+            PAD_ID=self.decoder.params.get('PAD_SYMBOL',
+                                           SpecialTextTokens.PAD_ID),
+            ignore_special=True, delim=' ',
+        ))
     return input_strings, output_strings
 
   def finalize_inference(self, results_per_batch, output_file):
@@ -110,7 +120,7 @@ class Text2Text(EncoderDecoderModel):
             deco_print("")
           step += 1
 
-  def maybe_print_logs(self, input_values, output_values):
+  def maybe_print_logs(self, input_values, output_values, training_step):
     x, len_x = input_values['source_tensors']
     y, len_y = input_values['target_tensors']
     samples = output_values[0]
@@ -121,28 +131,28 @@ class Text2Text(EncoderDecoderModel):
     len_y_sample = len_y[0]
 
     deco_print(
-      "Train Source[0]:     " + array_to_string(
-        x_sample[:len_x_sample],
-        vocab=self.get_data_layer().params['source_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "Train Source[0]:     " + array_to_string(
+            x_sample[:len_x_sample],
+            vocab=self.get_data_layer().params['source_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     deco_print(
-      "Train Target[0]:     " + array_to_string(
-        y_sample[:len_y_sample],
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "Train Target[0]:     " + array_to_string(
+            y_sample[:len_y_sample],
+            vocab=self.get_data_layer().params['target_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     deco_print(
-      "Train Prediction[0]: " + array_to_string(
-        samples[0, :],
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "Train Prediction[0]: " + array_to_string(
+            samples[0, :],
+            vocab=self.get_data_layer().params['target_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     return {}
 
@@ -156,51 +166,51 @@ class Text2Text(EncoderDecoderModel):
     len_y_sample = elen_y[0]
 
     deco_print(
-      "*****EVAL Source[0]:     " + array_to_string(
-        x_sample[:len_x_sample],
-        vocab=self.get_data_layer().params['source_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "*****EVAL Source[0]:     " + array_to_string(
+            x_sample[:len_x_sample],
+            vocab=self.get_data_layer().params['source_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     deco_print(
-      "*****EVAL Target[0]:     " + array_to_string(
-        y_sample[:len_y_sample],
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "*****EVAL Target[0]:     " + array_to_string(
+            y_sample[:len_y_sample],
+            vocab=self.get_data_layer().params['target_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     samples = output_values[0]
     deco_print(
-      "*****EVAL Prediction[0]: " + array_to_string(
-        samples[0, :],
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        delim=self.get_data_layer().params["delimiter"],
-      ),
-      offset=4,
+        "*****EVAL Prediction[0]: " + array_to_string(
+            samples[0, :],
+            vocab=self.get_data_layer().params['target_idx2seq'],
+            delim=self.get_data_layer().params["delimiter"],
+        ),
+        offset=4,
     )
     preds, targets = [], []
 
     if self.params.get('eval_using_bleu', True):
       preds.extend([transform_for_bleu(
-        sample,
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        ignore_special=True,
-        delim=self.get_data_layer().params["delimiter"],
-        bpe_used=self.params.get('bpe_used', False),
+          sample,
+          vocab=self.get_data_layer().params['target_idx2seq'],
+          ignore_special=True,
+          delim=self.get_data_layer().params["delimiter"],
+          bpe_used=self.params.get('bpe_used', False),
       ) for sample in samples])
       targets.extend([[transform_for_bleu(
-        yi,
-        vocab=self.get_data_layer().params['target_idx2seq'],
-        ignore_special=True,
-        delim=self.get_data_layer().params["delimiter"],
-        bpe_used=self.params.get('bpe_used', False),
+          yi,
+          vocab=self.get_data_layer().params['target_idx2seq'],
+          ignore_special=True,
+          delim=self.get_data_layer().params["delimiter"],
+          bpe_used=self.params.get('bpe_used', False),
       )] for yi in ey])
 
     return preds, targets
 
-  def finalize_evaluation(self, results_per_batch):
+  def finalize_evaluation(self, results_per_batch, training_step=None):
     preds, targets = [], []
     for preds_cur, targets_cur in results_per_batch:
       if self.params.get('eval_using_bleu', True):
@@ -214,11 +224,18 @@ class Text2Text(EncoderDecoderModel):
 
     return {}
 
-  def get_num_objects_per_step(self, worker_id=0):
+  def _get_num_objects_per_step(self, worker_id=0):
     """Returns number of source tokens + number of target tokens in batch."""
     data_layer = self.get_data_layer(worker_id)
     # sum of source length in batch
     num_tokens = tf.reduce_sum(data_layer.input_tensors['source_tensors'][1])
-    # sum of target length in batch
-    num_tokens += tf.reduce_sum(data_layer.input_tensors['target_tensors'][1])
+    if self.mode != "infer":
+      # sum of target length in batch
+      num_tokens += tf.reduce_sum(data_layer.input_tensors['target_tensors'][1])
+    else:
+      # this will count padding for batch size > 1. Need to be changed
+      # if that's not expected behaviour
+      num_tokens += tf.reduce_sum(
+          tf.shape(self.get_output_tensors(worker_id)[0])
+      )
     return num_tokens

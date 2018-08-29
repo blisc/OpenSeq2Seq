@@ -1,254 +1,396 @@
 # Copyright (c) 2018 NVIDIA Corporation
-
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
+from six import BytesIO
 from six.moves import range
 
-import pandas as pd
-import tensorflow as tf
-import numpy as np
+from scipy.io.wavfile import write
 
+import librosa
+import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from scipy.io.wavfile import write
-import librosa
+import tensorflow as tf
 
 from .encoder_decoder import EncoderDecoderModel
-from open_seq2seq.utils.utils import deco_print
 
-
-def plot_spectrogram_w_input(ground_truth, generated_sample, post_net_sample, attention, final_inputs,
- logdir, train_step, number=0, append=False, vmin=None, vmax=None):
-  fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(nrows=5, figsize=(8,12))
-  
-  if vmin is None:
-    vmin = min(np.min(ground_truth), np.min(generated_sample), np.min(post_net_sample), np.min(final_inputs))
-  if vmax is None:
-    vmax = max(np.max(ground_truth), np.max(generated_sample), np.max(post_net_sample), np.max(final_inputs))
-  
-  colour1 = ax1.imshow(ground_truth.T, cmap='viridis', interpolation='nearest', aspect='auto', vmin=vmin, vmax=vmax)
-  colour2 = ax2.imshow(generated_sample.T, cmap='viridis', interpolation='nearest', aspect='auto', vmin=vmin, vmax=vmax)
-  colour3 = ax3.imshow(post_net_sample.T, cmap='viridis', interpolation='nearest', aspect='auto', vmin=vmin, vmax=vmax)
-  colour4 = ax4.imshow(final_inputs.T, cmap='viridis', interpolation='nearest', aspect='auto', vmin=vmin, vmax=vmax)
-  colour5 = ax5.imshow(attention.T, cmap='viridis', interpolation='nearest', aspect='auto')
-  
-  ax1.invert_yaxis()
-  ax1.set_ylabel('fourier components')
-  ax1.set_title('training data')
-  
-  ax2.invert_yaxis()
-  ax2.set_ylabel('fourier components')
-  ax2.set_title('decoder results')
-
-  ax3.invert_yaxis()
-  ax3.set_ylabel('fourier components')
-  ax3.set_title('post net results')
-
-  ax4.invert_yaxis()
-  ax4.set_ylabel('fourier components')
-  ax4.set_title('Inputs')
-
-  ax5.invert_yaxis()
-  ax5.set_title('attention')
-  ax5.set_ylabel('inputs')
-  
-  plt.xlabel('time')
-  
-  fig.subplots_adjust(right=0.8)
-  cbar_ax1 = fig.add_axes([0.85, 0.35, 0.05, 0.5])
-  fig.colorbar(colour1, cax=cbar_ax1)
-  cbar_ax2 = fig.add_axes([0.85, 0.1, 0.05, 0.15])
-  fig.colorbar(colour4, cax=cbar_ax2)
-
-  if append:
-    name = '{}/Output_Step{}_{}_{}.png'.format(logdir, train_step, number, append)
-  else:
-    name = '{}/Output_Step{}_{}.png'.format(logdir, train_step, number)
-  if logdir[0] != '/':
-    name = "./"+name
-  #save
-  fig.savefig(name, dpi=300)
-
-  plt.close(fig)
-
-def save_audio(mag_spec, logdir, name, train=True):
-  magnitudes = np.exp(mag_spec)
-  signal = griffin_lim(magnitudes.T**1.2)
-  if train:
-    file_name = '{}/sample_train_step_{}.wav'.format(logdir, name)
-  else:
-    file_name = '{}/sample_eval_step_{}.wav'.format(logdir, name)
-  if logdir[0] != '/':
-    file_name = "./"+file_name
-  write(file_name, 22050 ,signal)
-
-def griffin_lim(magnitudes, n_iters=50):
+def plot_spectrograms(
+    specs,
+    titles,
+    stop_token_pred,
+    audio_length,
+    logdir,
+    train_step,
+    stop_token_target=None,
+    number=0,
+    append=False,
+    save_to_tensorboard=False
+):
   """
-  PARAMS
-  ------
-  magnitudes: spectrogram magnitudes
-  stft_fn: STFT class with transform (STFT) and inverse (ISTFT) methods
+  Helper function to create a image to be logged to disk or a tf.Summary to be
+  logged to tensorboard.
+
+  Args:
+    specs (array): array of images to show
+    titles (array): array of titles. Must match lengths of specs array
+    stop_token_pred (np.array): np.array of size [time, 1] containing the stop
+      token predictions from the model.
+    audio_length (int): lenth of the predicted spectrogram
+    logdir (str): dir to save image file is save_to_tensorboard is disabled.
+    train_step (int): current training step
+    stop_token_target (np.array): np.array of size [time, 1] containing the stop
+      token target.
+    number (int): Current sample number (used if evaluating more than 1 sample
+      from a batch)
+    append (str): Optional string to append to file name eg. train, eval, infer
+    save_to_tensorboard (bool): If False, the created image is saved to the
+      logdir as a png file. If True, the function returns a tf.Summary object
+      containing the image and will be logged to the current tensorboard file.
+
+  Returns:
+    tf.Summary or None
+  """
+  num_figs = len(specs) + 1
+  fig, ax = plt.subplots(nrows=num_figs, figsize=(8, num_figs * 3))
+
+  for i, (spec, title) in enumerate(zip(specs, titles)):
+    spec = np.pad(spec, ((1, 1), (1, 1)), "constant", constant_values=0.)
+    spec = spec.astype(float)
+    colour = ax[i].imshow(
+        spec.T, cmap='viridis', interpolation=None, aspect='auto'
+    )
+    ax[i].invert_yaxis()
+    ax[i].set_title(title)
+    fig.colorbar(colour, ax=ax[i])
+  if stop_token_target is not None:
+    stop_token_target = stop_token_target.astype(float)
+    ax[-1].plot(stop_token_target, 'r.')
+  stop_token_pred = stop_token_pred.astype(float)
+  ax[-1].plot(stop_token_pred, 'g.')
+  ax[-1].axvline(x=audio_length)
+  ax[-1].set_xlim(0, len(specs[0]))
+  ax[-1].set_title("stop token")
+
+  plt.xlabel('time')
+  plt.tight_layout()
+
+  cb = fig.colorbar(colour, ax=ax[-1])
+  cb.remove()
+
+
+  if save_to_tensorboard:
+    tag = "{}_image".format(append)
+    iostream = BytesIO()
+    fig.savefig(iostream, dpi=300)
+    summary = tf.Summary.Image(
+        encoded_image_string=iostream.getvalue(),
+        height=int(fig.get_figheight() * 300),
+        width=int(fig.get_figwidth() * 300)
+    )
+    summary = tf.Summary.Value(tag=tag, image=summary)
+    plt.close(fig)
+
+    return summary
+  else:
+    if append:
+      name = '{}/Output_step{}_{}_{}.png'.format(
+          logdir, train_step, number, append
+      )
+    else:
+      name = '{}/Output_step{}_{}.png'.format(logdir, train_step, number)
+    if logdir[0] != '/':
+      name = "./" + name
+    #save
+    fig.savefig(name, dpi=300)
+
+    plt.close(fig)
+    return None
+
+
+def save_audio(
+    magnitudes,
+    logdir,
+    step,
+    sampling_rate,
+    n_fft=1024,
+    mode="train",
+    number=0,
+    save_format="tensorboard",
+    power=1.5
+):
+  """
+  Helper function to create a wav file to be logged to disk or a tf.Summary to
+  be logged to tensorboard.
+
+  Args:
+    magnitudes (np.array): np.array of size [time, n_fft/2 + 1] containing the
+      energy spectrogram.
+    logdir (str): dir to save image file is save_to_tensorboard is disabled.
+    step (int): current training step
+    sampling_rate (int): samplng rate in Hz of the audio to be saved.
+    n_fft (int): number of filters for fft and ifft.
+    number (int): Current sample number (used if evaluating more than 1 sample
+    mode (str): Optional string to append to file name eg. train, eval, infer
+      from a batch)
+    save_format: save_audio can either return the np.array containing the
+      generated sound, log the wav file to the disk, or return a tensorboard
+      summary object. Each method can be enabled by passing save_format as
+      "np.array", "tensorboard", or "disk" respectively.
+
+  Returns:
+    tf.Summary or None
+  """
+  signal = griffin_lim(magnitudes.T**power, n_fft=n_fft)
+  if save_format == "np.array":
+    return signal
+  elif save_format == "tensorboard":
+    tag = "{}_audio".format(mode)
+    iostream = BytesIO()
+    write(iostream, sampling_rate, signal)
+    summary = tf.Summary.Audio(encoded_audio_string=iostream.getvalue())
+    summary = tf.Summary.Value(tag=tag, audio=summary)
+    return summary
+  elif save_format == "disk":
+    file_name = '{}/sample_step{}_{}_{}.wav'.format(logdir, step, number, mode)
+    if logdir[0] != '/':
+      file_name = "./" + file_name
+    write(file_name, sampling_rate, signal)
+    return None
+  else:
+    print((
+        "WARN: The save format passed to save_audio was not understood. No "
+        "sound files will be saved for the current step. "
+        "Received '{}'."
+        "Expected one of 'np.array', 'tensorboard', or 'disk'"
+    ).format(save_format))
+    return None
+
+
+def griffin_lim(magnitudes, n_iters=50, n_fft=1024):
+  """
+  Griffin-Lim algorithm to convert magnitude spectrograms to audio signals
   """
 
   phase = np.exp(2j * np.pi * np.random.rand(*magnitudes.shape))
   complex_spec = magnitudes * phase
   signal = librosa.istft(complex_spec)
 
-  for i in range(n_iters):
-    _, phase = librosa.magphase(librosa.stft(signal, n_fft=1024))
+  for _ in range(n_iters):
+    _, phase = librosa.magphase(librosa.stft(signal, n_fft=n_fft))
     complex_spec = magnitudes * phase
     signal = librosa.istft(complex_spec)
   return signal
 
-def sparse_tensor_to_chars(tensor, idx2char):
-  text = [''] * tensor.dense_shape[0]
-  for idx_tuple, value in zip(tensor.indices, tensor.values):
-    text[idx_tuple[0]] += idx2char[value]
-  return text
 
 class Text2Speech(EncoderDecoderModel):
-  def _create_decoder(self):
-    self.params['decoder_params']['num_audio_features'] = (
-      self.get_data_layer().params['num_audio_features']
+
+  @staticmethod
+  def get_required_params():
+    return dict(
+        EncoderDecoderModel.get_required_params(), **{
+            'save_to_tensorboard': bool,
+        }
     )
-    return super(Text2Speech, self)._create_decoder()
 
-  def _build_forward_pass_graph(self, input_tensors, gpu_id=0):
-    """TensorFlow graph for sequence-to-sequence model is created here.
-    This function connects encoder, decoder and loss together. As an input for
-    encoder it will specify source sequence and source length (as returned from
-    the data layer). As an input for decoder it will specify target sequence
-    and target length as well as all output returned from encoder. For loss it
-    will also specify target sequence and length and all output returned from
-    decoder. Note that loss will only be built for mode == "train" or "eval".
+  def __init__(self, params, mode="train", hvd=None):
+    super(Text2Speech, self).__init__(params, mode=mode, hvd=hvd)
+    self._save_to_tensorboard = self.params["save_to_tensorboard"]
 
-    See :meth:`models.model.Model._build_forward_pass_graph` for description of
-    arguments and return values.
-    """
-    if not isinstance(input_tensors, dict) or \
-       'source_tensors' not in input_tensors:
-      raise ValueError('Input tensors should be a dict containing '
-                       '"source_tensors" key')
-
-    if not isinstance(input_tensors['source_tensors'], list):
-      raise ValueError('source_tensors should be a list')
-
-    source_tensors = input_tensors['source_tensors']
-    if self.mode == "train" or self.mode == "eval":
-      if 'target_tensors' not in input_tensors:
-        raise ValueError('Input tensors should contain "target_tensors" key'
-                         'when mode != "infer"')
-      if not isinstance(input_tensors['target_tensors'], list):
-        raise ValueError('target_tensors should be a list')
-      target_tensors = input_tensors['target_tensors']
-
-    with tf.variable_scope("ForwardPass"):
-      encoder_input = {"source_tensors": source_tensors}
-      encoder_output = self.encoder.encode(input_dict=encoder_input)
-
-      decoder_input = {"encoder_output": encoder_output}
-      # if self.mode == "train":
-      decoder_input['target_tensors'] = target_tensors
-      decoder_output = self.decoder.decode(input_dict=decoder_input)
-      decoder_out = decoder_output.get("decoder_output", 0.)
-      decoder_post_net_outupt = decoder_output.get("post_net_output", 0.)
-      attention_mask = decoder_output.get("alignments", 0.)
-      inputs = decoder_output.get("final_inputs", 0.)
-
-      final_spectrogram = decoder_out + decoder_post_net_outupt
-
-      if self.mode == "train" or self.mode == "eval":
-        with tf.variable_scope("Loss"):
-          loss_input_dict = {
-            "decoder_output": decoder_output,
-            "target_tensors": target_tensors,
-          }
-          loss = self.loss_computator.compute_loss(loss_input_dict)
-      else:
-        deco_print("Inference Mode. Loss part of graph isn't built.")
-        loss = None
-      return loss, [decoder_out, final_spectrogram, attention_mask, inputs]
-
-  def maybe_print_logs(self, input_values, output_values, step):
-    y, y_length = input_values['target_tensors']
-    predicted_decoder_spectrograms = output_values[0]
-    predicted_final_spectrograms = output_values[1]
+  def maybe_print_logs(self, input_values, output_values, training_step):
+    dict_to_log = {}
+    step = training_step
+    spec, stop_target, _ = input_values['target_tensors']
+    predicted_decoder_spec = output_values[0]
+    predicted_final_spec = output_values[1]
     attention_mask = output_values[2]
-    final_inputs = output_values[3]
-    y_sample = y[0]
-    y_length_sample = y_length[0]
-    predicted_spectrogram_sample = predicted_decoder_spectrograms[0]
-    predicted_final_spectrogram_sample = predicted_final_spectrograms[0]
-    attention_mask_sample = attention_mask[0]
-    final_inputs_sample = final_inputs[0]
+    stop_token_pred = output_values[3]
+    y_sample = spec[0]
+    stop_target = stop_target[0]
+    predicted_spec = predicted_decoder_spec[0]
+    predicted_final_spec = predicted_final_spec[0]
+    attention_mask = attention_mask[0]
+    stop_token_pred = stop_token_pred[0]
+    audio_length = output_values[4][0]
 
-    plot_spectrogram_w_input(y_sample, predicted_spectrogram_sample,
-                     predicted_final_spectrogram_sample,
-                     attention_mask_sample,
-                     final_inputs_sample,
-                     self.params["logdir"], step,
-                     append="train")
+    specs = [
+        y_sample,
+        predicted_spec,
+        predicted_final_spec,
+        attention_mask
+    ]
+    titles = [
+        "training data",
+        "decoder results",
+        "post net results",
+        "alignments"
+    ]
 
-    if self.get_data_layer().params['output_type'] == "spectrogram":
-      save_audio(predicted_final_spectrogram_sample, self.params["logdir"], step)
-    
+    im_summary = plot_spectrograms(
+        specs,
+        titles,
+        stop_token_pred,
+        audio_length,
+        self.params["logdir"],
+        step,
+        append="train",
+        save_to_tensorboard=self._save_to_tensorboard,
+        stop_token_target=stop_target
+    )
+
+    dict_to_log['image'] = im_summary
+
+    predicted_final_spec = predicted_final_spec[:audio_length - 1, :]
+    predicted_final_spec = self.get_data_layer(
+    ).get_magnitude_spec(predicted_final_spec)
+    if self._save_to_tensorboard:
+      save_format = "tensorboard"
+    else:
+      save_format = "disk"
+    wav_summary = save_audio(
+        predicted_final_spec,
+        self.params["logdir"],
+        step,
+        n_fft=self.get_data_layer().n_fft,
+        sampling_rate=self.get_data_layer().sampling_rate,
+        save_format=save_format
+    )
+    dict_to_log['audio'] = wav_summary
+
+    if self._save_to_tensorboard:
+      return dict_to_log
     return {}
 
-  def finalize_evaluation(self, results_per_batch, step):
+  def finalize_evaluation(self, results_per_batch, training_step=None):
+    dict_to_log = {}
+    step = training_step
     sample = results_per_batch[-1]
     input_values = sample[0]
     output_values = sample[1]
-    y, y_length = input_values['target_tensors']
-    predicted_decoder_spectrograms = output_values[0]
-    predicted_final_spectrograms = output_values[1]
+    y_sample, stop_target = input_values['target_tensors']
+    predicted_spec = output_values[0]
+    predicted_final_spec = output_values[1]
     attention_mask = output_values[2]
-    final_inputs = output_values[3]
+    stop_token_pred = output_values[3]
+    audio_length = output_values[4]
 
-    y_sample = y[-1]
-    predicted_spectrogram_sample = predicted_decoder_spectrograms[-1]
-    predicted_final_spectrogram_sample = predicted_final_spectrograms[-1]
-    attention_mask_sample = attention_mask[-1]
-    final_inputs_sample = final_inputs[-1]
+    specs = [
+        y_sample,
+        predicted_spec,
+        predicted_final_spec,
+        attention_mask
+    ]
+    titles = [
+        "training data",
+        "decoder results",
+        "post net results",
+        "alignments"
+    ]
 
+    im_summary = plot_spectrograms(
+        specs,
+        titles,
+        stop_token_pred,
+        audio_length,
+        self.params["logdir"],
+        step,
+        append="eval",
+        save_to_tensorboard=self._save_to_tensorboard,
+        stop_token_target=stop_target
+    )
 
-    plot_spectrogram_w_input(y_sample, predicted_spectrogram_sample,
-                     predicted_final_spectrogram_sample,
-                     attention_mask_sample,
-                     final_inputs_sample,
-                     self.params["logdir"], step,
-                     append="eval")
+    dict_to_log['image'] = im_summary
 
-    if self.get_data_layer().params['output_type'] == "spectrogram":
-      save_audio(predicted_final_spectrogram_sample, self.params["logdir"], step, train=False)
+    if audio_length > 2:
+      predicted_final_spec = predicted_final_spec[:audio_length - 1, :]
 
+      predicted_final_spec = self.get_data_layer(
+      ).get_magnitude_spec(predicted_final_spec)
+      if self._save_to_tensorboard:
+        save_format = "tensorboard"
+      else:
+        save_format = "disk"
+      wav_summary = save_audio(
+          predicted_final_spec,
+          self.params["logdir"],
+          step,
+          n_fft=self.get_data_layer().n_fft,
+          sampling_rate=self.get_data_layer().sampling_rate,
+          mode="eval",
+          save_format=save_format
+      )
+      dict_to_log['audio'] = wav_summary
+
+    if self._save_to_tensorboard:
+      return dict_to_log
     return {}
 
-
   def evaluate(self, input_values, output_values):
+    # Need to reduce amount of data sent for horovod
+    output_values = [item[-3] for item in output_values]
+    input_values = {
+        key: [value[0][-3], value[1][-3]] for key, value in input_values.items()
+    }
     return [input_values, output_values]
 
-  # def infer(self, input_values, output_values):
-  #   preds = []
-  #   decoded_sequence = output_values[0]
-  #   decoded_texts = sparse_tensor_to_chars(
-  #     decoded_sequence,
-  #     self.get_data_layer().params['idx2char'],
-  #   )
-  #   for sample_id in range(len(decoded_texts)):
-  #     preds.append("".join(decoded_texts[sample_id]))
-  #   return preds
+  def infer(self, input_values, output_values):
+    if self.on_horovod:
+      raise ValueError('Inference is not supported on horovod')
+    return [input_values, output_values]
 
-  # def finalize_inference(self, results_per_batch, output_file):
-  #   preds = []
+  def finalize_inference(self, results_per_batch, output_file):
+    print("output_file is ignored for ts2")
+    print("results are logged to the logdir")
+    dict_to_log = {}
+    batch_size = len(results_per_batch[0][0]['source_tensors'][0])
+    for i, sample in enumerate(results_per_batch):
+      output_values = sample[1]
+      predicted_final_specs = output_values[1]
+      attention_mask = output_values[2]
+      stop_tokens = output_values[3]
+      sequence_lengths = output_values[4]
 
-  #   for result in results_per_batch:
-  #     preds.extend(result)
-  #   pd.DataFrame(
-  #     {
-  #       'wav_filename': self.get_data_layer().all_files,
-  #       'predicted_transcript': preds,
-  #     },
-  #     columns=['wav_filename', 'predicted_transcript'],
-  #   ).to_csv(output_file, index=False)
+      for j in range(len(predicted_final_specs)):
+        predicted_final_spec = predicted_final_specs[j]
+        attention_mask_sample = attention_mask[j]
+        stop_tokens_sample = stop_tokens[j]
+
+        specs = [predicted_final_spec, attention_mask_sample]
+        titles = ["final spectrogram", "attention"]
+        audio_length = sequence_lengths[j]
+
+        if "mel" in self.get_data_layer().params['output_type']:
+          mag_spec = self.get_data_layer(
+          ).get_magnitude_spec(predicted_final_spec)
+          log_mag_spec = np.log(np.clip(mag_spec, a_min=1e-5, a_max=None))
+          specs.append(log_mag_spec)
+          titles.append("linear spectrogram")
+
+        im_summary = plot_spectrograms(
+            specs,
+            titles,
+            stop_tokens_sample,
+            audio_length,
+            self.params["logdir"],
+            0,
+            number=i * batch_size + j,
+            append="infer"
+        )
+        dict_to_log['image'] = im_summary
+
+        if audio_length > 2:
+          predicted_final_spec = predicted_final_spec[:audio_length - 1, :]
+          predicted_final_spec = self.get_data_layer(
+          ).get_magnitude_spec(predicted_final_spec)
+          wav_summary = save_audio(
+              predicted_final_spec,
+              self.params["logdir"],
+              0,
+              n_fft=self.get_data_layer().n_fft,
+              sampling_rate=self.get_data_layer().sampling_rate,
+              mode="infer",
+              number=i * batch_size + j,
+              save_format="disk"
+          )
+
+          dict_to_log['audio'] = wav_summary
