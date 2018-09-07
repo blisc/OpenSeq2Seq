@@ -22,18 +22,18 @@ args_S2T = ["--config_file=Infer_S2T/config.py",
 ]
 
 # GPU - trained model
-# args_T2S_en = ["--config_file=Infer_T2S/config.py",
-#         "--mode=interactive_infer",
-#         "--logdir=Infer_T2S",
-#         "--batch_size_per_gpu={}".format(batch_size),
-# ]
-
-# CPU - random model
-args_T2S_en = ["--config_file=Infer_T2S/CPU/config.py",
+args_T2S_en = ["--config_file=Infer_T2S/config.py",
         "--mode=interactive_infer",
-        "--logdir=Infer_T2S/CPU",
+        "--logdir=Infer_T2S",
         "--batch_size_per_gpu={}".format(batch_size),
 ]
+
+# CPU - random model
+# args_T2S_en = ["--config_file=Infer_T2S/CPU/config.py",
+#         "--mode=interactive_infer",
+#         "--logdir=Infer_T2S/CPU",
+#         "--batch_size_per_gpu={}".format(batch_size),
+# ]
 
 args_DE2EN = ["--config_file=Infer_T2T/config.py",
         "--mode=interactive_infer",
