@@ -20,11 +20,21 @@ args_S2T = ["--config_file=Infer_S2T/config.py",
         "--logdir=Infer_S2T/",
         "--batch_size_per_gpu={}".format(batch_size),
 ]
-args_T2S_en = ["--config_file=Infer_T2S/config.py",
+
+# GPU - trained model
+# args_T2S_en = ["--config_file=Infer_T2S/config.py",
+#         "--mode=interactive_infer",
+#         "--logdir=Infer_T2S",
+#         "--batch_size_per_gpu={}".format(batch_size),
+# ]
+
+# CPU - random model
+args_T2S_en = ["--config_file=Infer_T2S/CPU/config.py",
         "--mode=interactive_infer",
-        "--logdir=Infer_T2S",
+        "--logdir=Infer_T2S/CPU",
         "--batch_size_per_gpu={}".format(batch_size),
 ]
+
 args_DE2EN = ["--config_file=Infer_T2T/config.py",
         "--mode=interactive_infer",
         "--logdir=Infer_T2T/",
@@ -170,12 +180,16 @@ def loop_fn(line):
     prediction = results[1][1]
     audio_length = results[1][4]
     new_out = []
+    total_len = 0
     for pred, audio_len in zip(prediction, audio_length):
         pred = pred[:audio_len-1,:]
         pred = model_T2S_en.get_data_layer().get_magnitude_spec(pred)
         wav = save_audio(pred, "unused", "unused", 22050, save_format="np.array", n_iters=10)
+        total_len += wav.shape[0]
         wav = librosa.core.resample(wav, 22050, 16000)
         new_out.append(wav)
+    average_len = total_len/batch_size
+    average_len = average_len/22050
 #     audio = IPython.display.Audio(wav, rate=16000)
 
 #     print("Generated Audio")
@@ -198,38 +212,47 @@ def loop_fn(line):
     asr_time = end_time-infer_time
     total_time = end_time-start_time
     
-    return total_time, data_processing_time, translation_time, synthesis_time, asr_time
+    return total_time, data_processing_time, translation_time, synthesis_time, asr_time, average_len
 
 with open(input_file) as f:
     num_read = 0
     arr = []
     i = 0
     total_time = data_processing_time = translation_time = synthesis_time = asr_time = 0
+    average_speech_len = 0
     for line in f:
         arr.append(line)
         num_read += 1
         if num_read == batch_size:
             i += 1
             times = loop_fn(arr)
-            total_time_i, data_processing_time_i, translation_time_i, synthesis_time_i, asr_time_i = times
+            total_time_i, data_processing_time_i, translation_time_i, synthesis_time_i, asr_time_i, average_speech_len_i = times
             total_time += total_time_i
             data_processing_time += data_processing_time_i
             translation_time += translation_time_i
             synthesis_time += synthesis_time_i
             asr_time += asr_time_i
             num_read = 0
+            average_speech_len += average_speech_len_i
             arr = []
             if i % print_every == 0:
-                print("Done batch {}".format(i))
-                print("total time per batch: {}".format(total_time/i))
-                print("data_processing_time per batch: {}".format(data_processing_time/i))
-                print("translation_time per batch: {}".format(translation_time/i))
-                print("synthesis_time per batch: {}".format(synthesis_time/i))
-                print("asr_time per batch: {}".format(asr_time/i))
-                print("data_processing_time percentage: {}".format(data_processing_time/total_time))
-                print("translation_time percentage: {}".format(translation_time/total_time))
-                print("synthesis_time percentage: {}".format(synthesis_time/total_time))
-                print("asr_time percentage: {}".format(asr_time/total_time))
+                print("Processed {} sentences".format(i*batch_size))
+                print("")
+                print("time per batch: {:.3f}s".format(total_time/i))
+                print("data_processing_time per batch: {:.3f}s".format(data_processing_time/i))
+                print("translation_time per batch: {:.3f}s".format(translation_time/i))
+                print("synthesis_time per batch: {:.3f}s".format(synthesis_time/i))
+                print("asr_time per batch: {:.3f}s".format(asr_time/i))
+                print("")
+                print("data_processing_time percentage: {:.2%}".format(data_processing_time/total_time))
+                print("translation_time percentage: {:.2%}".format(translation_time/total_time))
+                print("synthesis_time percentage: {:.2%}".format(synthesis_time/total_time))
+                print("asr_time percentage: {:.2%}".format(asr_time/total_time))
+                print("")
+                print("average length of generated speech per sample: {:.3f}s".format(average_speech_len/i))
+                print("total length of generated speech per batch: {:.3f}s".format(average_speech_len*batch_size/i))
+                print("real time ratio: {:.3f}".format((average_speech_len*batch_size/i)/(total_time/i)))
+                print("")
     if len(arr) != 0:
         pad = batch_size - len(arr) 
         for i in range(pad):
