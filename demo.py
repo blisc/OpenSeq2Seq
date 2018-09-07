@@ -149,7 +149,7 @@ def loop_fn(line):
     new_out = []
     for line in output:
         english_translated = re.sub("&\w+;", "", line)
-        english_translated = re.sub("@ ", "", english_translated)
+        english_translated = re.sub("@", "", english_translated)
         english_translated = re.sub("/", "", english_translated)
         new_out.append(english_translated)
 
