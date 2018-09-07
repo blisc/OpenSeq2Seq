@@ -404,7 +404,7 @@ class Text2SpeechDataLayer(DataLayer):
     # else:
     #   transcript = str(transcript, "utf-8")
     text_input = np.array(
-        [self.params['char2idx'][c] for c in transcript]
+        [self.params['char2idx'].get(c,3) for c in transcript]
     )
     pad_to = self.params.get('pad_to', 8)
     if self.params.get("pad_EOS", True):
