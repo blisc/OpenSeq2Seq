@@ -220,7 +220,7 @@ with open(input_file) as f:
             num_read = 0
             arr = []
             if i % print_every == 0:
-                print("Done batch {}".format(i*print_every))
+                print("Done batch {}".format(i))
                 print("total time per batch: {}".format(total_time/i))
                 print("data_processing_time per batch: {}".format(data_processing_time/i))
                 print("translation_time per batch: {}".format(translation_time/i))
