@@ -117,7 +117,8 @@ def save_audio(
     mode="train",
     number=0,
     save_format="tensorboard",
-    power=1.5
+    power=1.5,
+    n_iters=50
 ):
   """
   Helper function to create a wav file to be logged to disk or a tf.Summary to
@@ -141,7 +142,7 @@ def save_audio(
   Returns:
     tf.Summary or None
   """
-  signal = griffin_lim(magnitudes.T**power, n_fft=n_fft)
+  signal = griffin_lim(magnitudes.T**power, n_fft=n_fft, n_iters=n_iters)
   if save_format == "np.array":
     return signal
   elif save_format == "tensorboard":

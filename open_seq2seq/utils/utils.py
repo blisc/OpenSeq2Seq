@@ -462,9 +462,10 @@ def get_interactive_infer_results(model, sess, model_in):
 
   feed_dict = model.get_data_layer().create_feed_dict(model_in)
 
+  infer_time = time.time()
   inputs, outputs = sess.run(fetches, feed_dict=feed_dict)
 
-  return model.infer(inputs, outputs)
+  return model.infer(inputs, outputs), infer_time
 
 def get_base_config(args):
   """This function parses the command line arguments, reads the config file, and
