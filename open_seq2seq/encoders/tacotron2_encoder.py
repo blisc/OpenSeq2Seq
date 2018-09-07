@@ -192,6 +192,15 @@ class Tacotron2Encoder(Encoder):
       rnn_input = top_layer
       rnn_vars = []
 
+      # cell = lambda: tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(cell_params["num_units"])
+      # cells_fw = [cell() for _ in range(1)]
+      # cells_bw = [cell() for _ in range(1)]
+      # (top_layer, output_state_fw,output_state_bw) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
+      #     cells_fw, cells_bw, rnn_input,
+      #     sequence_length=text_len,
+      #     dtype=rnn_input.dtype,
+      #     time_major=False)
+
       if self.params["use_cudnn_rnn"]:
         all_cudnn_classes = [
             i[1]
@@ -210,16 +219,18 @@ class Tacotron2Encoder(Encoder):
         else:
           direction = cudnn_rnn_ops.CUDNN_RNN_BIDIRECTION
 
-        rnn_block = rnn_type(
+        self.rnn_input = rnn_input
+        self.rnn_block = rnn_type(
             num_layers=num_rnn_layers,
             num_units=cell_params["num_units"],
             direction=direction,
             dtype=rnn_input.dtype,
             name="cudnn_rnn"
         )
-        top_layer, _ = rnn_block(rnn_input)
+        # rnn_block.build(rnn_input.get_shape().as_list())
+        top_layer, _ = self.rnn_block(rnn_input)
         top_layer = tf.transpose(top_layer, [1, 0, 2])
-        rnn_vars += rnn_block.trainable_variables
+        rnn_vars += self.rnn_block.trainable_variables
 
       else:
         multirnn_cell_fw = tf.nn.rnn_cell.MultiRNNCell(

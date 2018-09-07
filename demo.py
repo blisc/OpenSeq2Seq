@@ -1,4 +1,5 @@
 import librosa
+import IPython
 import time
 
 import numpy as np
@@ -10,7 +11,7 @@ from open_seq2seq.utils.utils import deco_print, get_base_config, check_logdir,\
 from open_seq2seq.models.text2speech import save_audio
 
 batch_size = 8
-input_file = "/home/jasoli/Downloads/11227/train.clean.de"
+input_file = "Infer_T2T/train.clean.de"
 print_every = 10
 print_verbose = False
 
@@ -24,22 +25,11 @@ args_T2S_en = ["--config_file=Infer_T2S/config.py",
         "--logdir=Infer_T2S",
         "--batch_size_per_gpu={}".format(batch_size),
 ]
-# args_T2S_de = ["--config_file=Infer_T2S/config.py",
-#         "--mode=interactive_infer",
-#         "--logdir=Infer_T2S/de",
-#         "--batch_size_per_gpu=1",
-# ]
 args_DE2EN = ["--config_file=Infer_T2T/config.py",
         "--mode=interactive_infer",
         "--logdir=Infer_T2T/",
         "--batch_size_per_gpu={}".format(batch_size),
 ]
-# args_EN2DE = ["--config_file=Infer_T2T/config.py",
-#         "--mode=interactive_infer",
-#         "--logdir=Infer_T2T/",
-#         "--batch_size_per_gpu=1",
-# ]
-
 def get_model(args, scope):
     with tf.variable_scope(scope):
         args, base_config, base_model, config_module = get_base_config(args)
@@ -49,13 +39,12 @@ def get_model(args, scope):
 
 model_S2T, checkpoint_S2T = get_model(args_S2T, "S2T")
 model_T2S_en, checkpoint_T2S_en = get_model(args_T2S_en, "T2S_en")
-# model_T2S_de, checkpoint_T2S_de = get_model(args_T2S_de, "T2S_de")
-# model_EN2DE, checkpoint_EN2DE = get_model(args_EN2DE, "EN2DE")
 model_DE2EN, checkpoint_DE2EN = get_model(args_DE2EN, "DE2EN")
 
 sess_config = tf.ConfigProto(allow_soft_placement=True)
 sess_config.gpu_options.allow_growth = True
 sess = tf.InteractiveSession(config=sess_config)
+
 
 def restore_certain_variables(sess, filename, trainables):
     print('Restoring only the variables found in the checkpoint')
@@ -106,33 +95,25 @@ def restore_certain_variables(sess, filename, trainables):
 
 vars_S2T = {}
 vars_T2S_en = {}
-# vars_T2S_de = {}
-# vars_EN2DE = {}
 vars_DE2EN = {}
 for v in tf.get_collection(tf.GraphKeys.VARIABLES):
     if "S2T" in v.name:
         vars_S2T["/".join(v.op.name.split("/")[1:])] = v
     if "T2S_en" in v.name:
         vars_T2S_en["/".join(v.op.name.split("/")[1:])] = v
-#     if "T2S_de" in v.name:
-#         vars_T2S_de["/".join(v.op.name.split("/")[1:])] = v
-#     if "EN2DE" in v.name:
-#         vars_EN2DE["/".join(v.op.name.split("/")[1:])] = v
     if "DE2EN" in v.name:
         vars_DE2EN["/".join(v.op.name.split("/")[1:])] = v
-# saver_S2T = tf.train.Saver(vars_S2T)
 saver_T2S_en = tf.train.Saver(vars_T2S_en)
-# # saver_T2S_de = tf.train.Saver(vars_T2S_de)
-# # saver_EN2DE = tf.train.Saver(vars_EN2DE)
+saver_T2S_en.restore(sess, checkpoint_T2S_en)
+# restore_certain_variables(sess, checkpoint_T2S_en, vars_T2S_en)
+
+
+# saver_S2T = tf.train.Saver(vars_S2T)
 # saver_DE2EN = tf.train.Saver(vars_DE2EN)
 # saver_S2T.restore(sess, checkpoint_S2T)
-saver_T2S_en.restore(sess, checkpoint_T2S_en)
-# # saver_T2S_de.restore(sess, checkpoint_T2S_de)
-# # saver_EN2DE.restore(sess, checkpoint_EN2DE)
 # saver_DE2EN.restore(sess, checkpoint_DE2EN)
 
 restore_certain_variables(sess, checkpoint_S2T, vars_S2T)
-# restore_certain_variables(sess, checkpoint_T2S_en, vars_T2S_en)
 restore_certain_variables(sess, checkpoint_DE2EN, vars_DE2EN)
 
 import codecs
@@ -239,7 +220,7 @@ with open(input_file) as f:
             num_read = 0
             arr = []
             if i % print_every == 0:
-                print("Done batch {}".format(i))
+                print("Done batch {}".format(i*print_every))
                 print("total time per batch: {}".format(total_time/i))
                 print("data_processing_time per batch: {}".format(data_processing_time/i))
                 print("translation_time per batch: {}".format(translation_time/i))
