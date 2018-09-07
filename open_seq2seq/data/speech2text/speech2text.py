@@ -66,6 +66,8 @@ class Speech2TextDataLayer(DataLayer):
     self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 1
 
     self._files = None
+    if self.params["interactive"]:
+      return
     for csv in params['dataset_files']:
       files = pd.read_csv(csv, encoding='utf-8')
       if self._files is None:
