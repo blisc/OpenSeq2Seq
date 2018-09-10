@@ -311,9 +311,9 @@ class Text2SpeechDataLayer(DataLayer):
     if six.PY2:
       audio_filename = unicode(audio_filename, "utf-8")
       transcript = unicode(transcript, "utf-8")
-    # else:
-    #   audio_filename = str(audio_filename, "utf-8")
-    #   transcript = str(transcript, "utf-8")
+    elif not isinstance(transcript, string_types):
+      audio_filename = str(audio_filename, "utf-8")
+      transcript = str(transcript, "utf-8")
     text_input = np.array(
         [self.params['char2idx'][c] for c in transcript]
     )
@@ -401,8 +401,8 @@ class Text2SpeechDataLayer(DataLayer):
     transcript = transcript.lower()
     if six.PY2:
       transcript = unicode(transcript, "utf-8")
-    # else:
-    #   transcript = str(transcript, "utf-8")
+    elif not isinstance(transcript, string_types):
+      transcript = str(transcript, "utf-8")
     text_input = np.array(
         [self.params['char2idx'].get(c,3) for c in transcript]
     )
