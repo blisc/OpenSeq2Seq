@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """
-Modified by blisc to enable support for tacotron models
 Custom Helper class that implements the tacotron decoder pre and post nets
 """
 from __future__ import absolute_import, division, print_function
@@ -31,6 +30,8 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import tensor_array_ops
 from tensorflow.python.util import nest
+from tensorflow.python.ops.distributions import bernoulli
+from tensorflow.python.ops import gen_array_ops
 
 _transpose_batch_time = decoder._transpose_batch_time
 
@@ -52,6 +53,9 @@ class TacotronTrainingHelper(Helper):
       inputs,
       sequence_length,
       prenet=None,
+      sampling_prob=0.,
+      anneal_teacher_forcing=False,
+      stop_gradient=False,
       time_major=False,
       sample_ids_shape=None,
       sample_ids_dtype=None,
@@ -66,6 +70,8 @@ class TacotronTrainingHelper(Helper):
       prenet: prenet to use, currently disabled and used in tacotron decoder
         instead.
       sampling_prob (float): see tacotron 2 decoder
+      anneal_teacher_forcing (float): see tacotron 2 decoder
+      stop_gradient (float): see tacotron 2 decoder
       time_major (bool): (float): see tacotron 2 decoder
       mask_decoder_sequence (bool): whether to pass finished when the decoder
         passed the sequence_length input or to pass unfinished to dynamic_decode
@@ -79,6 +85,9 @@ class TacotronTrainingHelper(Helper):
     self._sequence_length = sequence_length
     self._batch_size = array_ops.size(sequence_length)
     self._seed = None
+    self._sampling_prob = sampling_prob
+    self._anneal_teacher_forcing = anneal_teacher_forcing
+    self._stop_gradient = stop_gradient
     self._mask_decoder_sequence = mask_decoder_sequence
     self._prenet = prenet
     self._zero_inputs = nest.map_structure(
@@ -107,7 +116,6 @@ class TacotronTrainingHelper(Helper):
     return (finished, self._start_inputs)
 
   def sample(self, time, outputs, state, name=None):
-    # Fully deterministic, output should already be projected
     pass
 
   def next_inputs(self, time, outputs, state, name=None, **unused_kwargs):
@@ -122,9 +130,51 @@ class TacotronTrainingHelper(Helper):
 
     def get_next_input(inp, out):
       next_input = inp.read(time)
+      if self._stop_gradient:
+        next_input = tf.stop_gradient(next_input)
+        out = tf.stop_gradient(out)
       if self._prenet is not None:
         next_input = self._prenet(next_input)
         out = self._prenet(out)
+      if self._anneal_teacher_forcing or self._sampling_prob > 0:
+        select_sampler = bernoulli.Bernoulli(
+            probs=self._sampling_prob, dtype=dtypes.bool
+        )
+        select_sample = select_sampler.sample(
+            sample_shape=(self.batch_size, 1), seed=self._seed
+        )
+        select_sample = tf.tile(select_sample, [1, self._last_dim])
+        sample_ids = array_ops.where(
+            select_sample, out,
+            gen_array_ops.fill(
+                [self.batch_size, self._last_dim],
+                tf.cast(-20., self._dtype)
+            )
+        )
+        where_sampling = math_ops.cast(
+            array_ops.where(sample_ids > -20), dtypes.int32
+        )
+        where_not_sampling = math_ops.cast(
+            array_ops.where(sample_ids <= -20), dtypes.int32
+        )
+        sample_ids_sampling = array_ops.gather_nd(sample_ids, where_sampling)
+        inputs_not_sampling = array_ops.gather_nd(
+            next_input, where_not_sampling
+        )
+        sampled_next_inputs = sample_ids_sampling
+        base_shape = array_ops.shape(next_input)
+
+        next_input = (
+            array_ops.scatter_nd(
+                indices=where_sampling,
+                updates=sampled_next_inputs,
+                shape=base_shape
+            ) + array_ops.scatter_nd(
+                indices=where_not_sampling,
+                updates=inputs_not_sampling,
+                shape=base_shape
+            )
+        )
       return next_input
 
     next_inputs = control_flow_ops.cond(
@@ -192,8 +242,8 @@ class TacotronHelper(Helper):
     return (finished, self._start_inputs)
 
   def sample(self, time, outputs, state, name=None):
-    # Fully deterministic, output should already be projected
     pass
+
   def next_inputs(
       self,
       time,

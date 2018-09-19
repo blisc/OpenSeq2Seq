@@ -13,19 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A powerful dynamic attention wrapper object.
-
-Modified by blisc to add support for LocationSensitiveAttention and changed
-the AttentionWrapper class to output both the cell_output and attention context
-concatenated together.
-
-New classes:
-  LocationSensitiveAttention
-  LocationLayer
-
-New functions:
-  _bahdanau_score_with_location
-"""
+"""A powerful dynamic attention wrapper object."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -707,6 +695,9 @@ class LocationLayer(layers_base.Layer):
         use_bias=False,
         data_format=data_format,
     )
+    # self.location_dense = layers_core.Dense(
+    #     name="{}_dense".format(name), units=attention_units, use_bias=False
+    # )
 
   def __call__(self, prev_attention):
     location_attention = self.conv_layer(prev_attention)
@@ -741,6 +732,7 @@ class LocationSensitiveAttention(_BaseAttentionMechanism):
       dtype=None,
       use_bias=False,
       name="LocationSensitiveAttention",
+      use_state=True
   ):
     """Construct the Attention mechanism.
 
@@ -763,6 +755,7 @@ class LocationSensitiveAttention(_BaseAttentionMechanism):
         mechanism.
       use_bias (bool): Whether to use a bias when computing alignments
       name: Name to use when creating ops.
+      use_state (bool): see tacotron 2 decoder params.
     """
     if probability_fn is None:
       probability_fn = nn_ops.softmax
@@ -773,6 +766,9 @@ class LocationSensitiveAttention(_BaseAttentionMechanism):
         query_layer=layers_core.Dense(
             num_units, name="query_layer", use_bias=False, dtype=dtype
         ),
+        # memory_layer=layers_core.Dense(
+        #     num_units, name="memory_layer", use_bias=False, dtype=dtype
+        # ),
         memory_layer = Conv1D(
             name="memory_layer".format(name),
             filters=num_units,
@@ -793,6 +789,11 @@ class LocationSensitiveAttention(_BaseAttentionMechanism):
     self._num_units = num_units
     self._name = name
     self.use_bias = use_bias
+    self._use_state = use_state
+    self.cumulative_location = self.initial_state(
+        self._batch_size, dtype
+    )
+    self._dtype = dtype
 
   def __call__(self, query, state):
     """Score the query based on the keys, values, and location.
@@ -811,18 +812,38 @@ class LocationSensitiveAttention(_BaseAttentionMechanism):
     """
     with variable_scope.variable_scope(None, "location_attention", [query]):
       processed_query = self.query_layer(query) if self.query_layer else query
-      location = array_ops.expand_dims(state, axis=-1)
+      if self._use_state:
+        location = array_ops.expand_dims(state, axis=-1)
+      else:
+        location = array_ops.stack(
+            (state, self.cumulative_location), axis=-1
+        )
       processed_location = self.location_layer(location)
+      if not self._use_state:
+        self.cumulative_location = processed_location + self.cumulative_location
       score = _bahdanau_score_with_location(
           processed_query, self._keys, processed_location, self.use_bias
       )
-    # Keep alignments in float32
-    # score = math_ops.cast(score, dtypes.float32)
+    score = math_ops.cast(score, dtypes.float32)
     alignments = self._probability_fn(score, state)
-    # next_state = math_ops.cast(alignments, state.dtype) + state
-    next_state = alignments + state
+    alignments = math_ops.cast(alignments, self._dtype)
+    if self._use_state:
+      next_state = alignments + state
+    else:
+      next_state = alignments
 
     return alignments, next_state
+
+  def initialize_location(self, dtype):
+    """
+    Used to initialize the cumulative location information to 0
+    """
+    if self._use_state:
+      pass
+    self.cumulative_location = self.initial_state(
+        self._batch_size, dtype
+    )
+
 
 def safe_cumprod(x, *args, **kwargs):
   """Computes cumprod of x in logspace using cumsum to avoid underflow.
@@ -1350,10 +1371,6 @@ def _compute_attention(
   # the batched matmul is over memory_time, so the output shape is
   #   [batch_size, 1, memory_size].
   # we then squeeze out the singleton dim.
-
-  # context = math_ops.matmul(expanded_alignments, attention_mechanism._values_32)
-  # context = math_ops.cast(context, attention_mechanism.values.dtype)
-  # alignments = math_ops.cast(alignments, attention_mechanism.values.dtype)
   context = math_ops.matmul(expanded_alignments, attention_mechanism.values)
   context = array_ops.squeeze(context, [1])
 
@@ -1452,7 +1469,7 @@ class AttentionWrapper(rnn_cell_impl.RNNCell):
         is a list, and its length does not match that of `attention_layer_size`.
     """
     super(AttentionWrapper, self).__init__(name=name)
-    rnn_cell_impl.assert_like_rnncell("cell",cell)
+    rnn_cell_impl.assert_like_rnncell("cell", cell)  # pylint: disable=protected-access
     if isinstance(attention_mechanism, (list, tuple)):
       self._is_multi = True
       attention_mechanisms = attention_mechanism
@@ -1543,6 +1560,7 @@ class AttentionWrapper(rnn_cell_impl.RNNCell):
           )
 
   def _batch_size_checks(self, batch_size, error_message):
+    # todo: replace with True
     return [
         check_ops.assert_equal(
             batch_size, attention_mechanism.batch_size, message=error_message

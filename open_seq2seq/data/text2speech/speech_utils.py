@@ -1,6 +1,7 @@
 # Copyright (c) 2018 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
+from six.moves import range
 
 import numpy as np
 import librosa
@@ -22,28 +23,29 @@ def get_speech_features_from_file(
 ):
   """ Helper function to retrieve spectrograms from wav files
 
+
   Args:
     filename (string): WAVE filename.
     num_features (int): number of speech features in frequency domain.
     features_type (string): 'magnitude' or 'mel'.
-    n_fft (int): size of analysis window in samples.
-    hop_length (int): stride of analysis window in samples.
+    window_size (int): size of analysis window in samples.
+    window_stride (int): stride of analysis window in samples.
     mag_power (int): power to raise magnitude spectrograms (prior to dot product
       with mel basis)
       1 for energy spectrograms
       2 fot power spectrograms
-    feature_normalize (bool): whether to normalize the data with mean and std
-    mean (float): if normalize is enabled, the mean to normalize to
-    std (float): if normalize is enabled, the deviation to normalize to
-    trim (bool): Whether to trim silence via librosa or not
-    data_min (float): min clip value prior to taking the log.
+    feature_normalize(bool): whether to normalize the data with mean and std
+    mean(float): if normalize is enabled, the mean to normalize to
+    std(float): if normalize is enabled, the deviation to normalize to
 
   Returns:
     np.array: np.array of audio features with shape=[num_time_steps,
-    num_features].
+      num_features].
   """
   # load audio signal
   signal, fs = librosa.core.load(filename, sr=None)
+  # signal = librosa.core.resample(signal, orig_sr=16000, target_sr=22050)
+  # fs = 22050
   if hop_length is None:
     hop_length = int(n_fft / 4)
   if trim:
@@ -74,13 +76,14 @@ def get_speech_features(
 ):
   """ Helper function to retrieve spectrograms from loaded wav
 
+
   Args:
     signal: signal loaded with librosa.
     fs (int): sampling frequency in Hz.
     num_features (int): number of speech features in frequency domain.
     features_type (string): 'magnitude' or 'mel'.
-    n_fft (int): size of analysis window in samples.
-    hop_length (int): stride of analysis window in samples.
+    window_size (int): size of analysis window in samples.
+    window_stride (int): stride of analysis window in samples.
     mag_power (int): power to raise magnitude spectrograms (prior to dot product
       with mel basis)
       1 for energy spectrograms
@@ -88,11 +91,10 @@ def get_speech_features(
     feature_normalize(bool): whether to normalize the data with mean and std
     mean(float): if normalize is enabled, the mean to normalize to
     std(float): if normalize is enabled, the deviation to normalize to
-    data_min (float): min clip value prior to taking the log.
 
   Returns:
     np.array: np.array of audio features with shape=[num_time_steps,
-    num_features].
+      num_features].
   """
   if isinstance(data_min, dict):
     data_min_mel = data_min["mel"]
@@ -104,7 +106,7 @@ def get_speech_features(
     num_features_mel = num_features["mel"]
     num_features_mag = num_features["magnitude"]
   else:
-    num_features_mel = num_features_mag = num_features
+    num_features_mel = num_features_mag =num_features
 
   complex_spec = librosa.stft(y=signal, n_fft=n_fft)
   mag, _ = librosa.magphase(complex_spec, power=mag_power)
@@ -134,6 +136,17 @@ def get_speech_features(
           norm=norm
       )
     features = np.dot(mel_basis, mag)
+
+    # features = librosa.feature.melspectrogram(
+    #     y=signal,
+    #     sr=fs,
+    #     n_fft=n_fft,
+    #     hop_length=hop_length,
+    #     n_mels=num_features_mel,
+    #     power=mag_power,
+    #     htk=htk,
+    #     norm=norm
+    # )
     features = np.log(np.clip(features, a_min=data_min_mel, a_max=None)).T
 
   if feature_normalize:
@@ -143,6 +156,7 @@ def get_speech_features(
     return [features, mag_features]
 
   return features
+
 
 def get_mel(
     log_mag_spec,
@@ -172,9 +186,6 @@ def get_mel(
     std (float): normalization param of mag spec
     mel_basis (np.array): optional pre-computed mel basis to save computational
       time if passed. If not passed, it will call librosa to construct one
-    data_min (float): min clip value prior to taking the log.
-    htk (bool): whther to compute the mel spec with the htk or slaney algorithm
-    norm: Should be None for htk, and 1 for slaney
 
   Returns:
     np.array: mel_spec with shape [time, n_mels]
@@ -225,8 +236,6 @@ def inverse_mel(
     std (float): normalization param of mel spec
     mel_basis (np.array): optional pre-computed mel basis to save computational
       time if passed. If not passed, it will call librosa to construct one
-    htk (bool): whther to compute the mel spec with the htk or slaney algorithm
-    norm: Should be None for htk, and 1 for slaney
 
   Returns:
     np.array: mag_spec with shape [time, n_fft/2 + 1]
@@ -242,6 +251,7 @@ def inverse_mel(
   if feature_normalize:
     log_mel_spec = denormalize(log_mel_spec, mean, std)
   mel_spec = np.exp(log_mel_spec)
+  # mel_spec = log_mel_spec
   mag_spec = np.dot(mel_spec, mel_basis)
   mag_spec = np.power(mag_spec, 1. / power)
   return mag_spec

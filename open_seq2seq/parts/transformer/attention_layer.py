@@ -24,7 +24,14 @@ import tensorflow as tf
 class Attention(tf.layers.Layer):
   """Multi-headed attention layer."""
 
-  def __init__(self, hidden_size, num_heads, attention_dropout, train):
+  def __init__(
+      self,
+      hidden_size,
+      num_heads,
+      attention_dropout,
+      train,
+      mode="loung"
+  ):
     if hidden_size % num_heads != 0:
       raise ValueError("Hidden size must be evenly divisible by the number of "
                        "heads.")
@@ -34,6 +41,7 @@ class Attention(tf.layers.Layer):
     self.num_heads = num_heads
     self.attention_dropout = attention_dropout
     self.train = train
+    self.mode = mode
 
     # Layers for linearly projecting the queries, keys, and values.
     self.q_dense_layer = tf.layers.Dense(hidden_size, use_bias=False, name="q")
@@ -121,27 +129,48 @@ class Attention(tf.layers.Layer):
     k = self.split_heads(k)
     v = self.split_heads(v)
 
-    # Scale q to prevent the dot product between q and k from growing too large.
-    depth = (self.hidden_size // self.num_heads)
-    q *= depth ** -0.5
+    if self.mode == "loung":
+      # Scale q to prevent the dot product between q and k from growing too large.
+      depth = (self.hidden_size // self.num_heads)
+      q *= depth ** -0.5
 
-    # Calculate dot product attention
-    #logits = tf.matmul(q, k, transpose_b=True)
-    #logits += bias
-    #weights = tf.nn.softmax(logits, name="attention_weights")
-    logits = tf.matmul(q, k, transpose_b=True)
-    dtype = logits.dtype
-    if dtype != tf.float32:
-      # upcast softmax inputs
-      logits = tf.cast(x=logits, dtype=tf.float32)
-      logits += bias
-      weights = tf.nn.softmax(logits, name="attention_weights")
-      # downcast softmax output
-      weights = tf.cast(weights, dtype=dtype)
+      # Calculate dot product attention
+      #logits = tf.matmul(q, k, transpose_b=True)
+      #logits += bias
+      #weights = tf.nn.softmax(logits, name="attention_weights")
+      logits = tf.matmul(q, k, transpose_b=True)
+      dtype = logits.dtype
+      if dtype != tf.float32:
+        # upcast softmax inputs
+        logits = tf.cast(x=logits, dtype=tf.float32)
+        logits += bias
+        weights = tf.nn.softmax(logits, name="attention_weights")
+        # downcast softmax output
+        weights = tf.cast(weights, dtype=dtype)
+      else:
+        logits += bias
+        weights = tf.nn.softmax(logits, name="attention_weights")
+    elif self.mode == "bahdanau":
+      att_v = tf.get_variable(
+          "attention_v", [self.hidden_size // self.num_heads], dtype=q.dtype
+      )
+
+      # Compute the attention score
+      if bias is not None:
+        weights = tf.reduce_sum(
+            tf.nn.tanh(att_v * tf.nn.tanh(k + q + bias)), 3
+        )
+      else:
+        weights = tf.reduce_sum(
+            tf.nn.tanh(att_v * tf.nn.tanh(k + q)), 3
+        )
+      weights = tf.nn.softmax(weights)
+      weights = tf.expand_dims(weights, 2)
     else:
-      logits += bias
-      weights = tf.nn.softmax(logits, name="attention_weights")
-
+      raise ValueError(
+          "Mode for multi-head attention must be either loung for dot-product",
+          "attention, or bahdanau for content-based/additive/mlp-base attention"
+      )
 
     if self.train:
       weights = tf.nn.dropout(weights, 1.0 - self.attention_dropout)
@@ -154,6 +183,53 @@ class Attention(tf.layers.Layer):
     attention_output = self.output_dense_layer(attention_output)
     return attention_output
 
+  def infer(self, energy, y):
+    """Apply attention mechanism using pre-computed energy and y.
+    TODO: FIX DOCS
+    """
+    # q = self.q_dense_layer(x)
+    # k = self.k_dense_layer(y)
+    v = self.v_dense_layer(y)
+
+    # Split q, k, v into heads.
+    # q = self.split_heads(q)
+    # k = self.split_heads(k)
+    v = self.split_heads(v)
+
+    if self.mode == "loung":
+      raise ValueError("loung not supported")
+    elif self.mode == "bahdanau":
+      # att_v = tf.get_variable(
+      #     "attention_v", [self.hidden_size // self.num_heads], dtype=q.dtype
+      # )
+
+      # # Compute the attention score
+      # if bias is not None:
+      #   weights = tf.reduce_sum(
+      #       tf.nn.tanh(att_v * tf.nn.tanh(k + q + bias)), 3
+      #   )
+      # else:
+      #   weights = tf.reduce_sum(
+      #       tf.nn.tanh(att_v * tf.nn.tanh(k + q)), 3
+      #   )
+      weights = tf.nn.softmax(energy)
+      weights = tf.expand_dims(weights, 2)
+    else:
+      raise ValueError(
+          "Mode for multi-head attention must be either loung for dot-product",
+          "attention, or bahdanau for content-based/additive/mlp-base attention"
+      )
+
+    if self.train:
+      weights = tf.nn.dropout(weights, 1.0 - self.attention_dropout)
+    attention_output = tf.matmul(weights, v)
+
+    # Recombine heads --> [batch_size, length, hidden_size]
+    attention_output = self.combine_heads(attention_output)
+
+    # Run the combined outputs through another linear projection layer.
+    attention_output = self.output_dense_layer(attention_output)
+    return attention_output
 
 class SelfAttention(Attention):
   """Multiheaded self-attention layer."""

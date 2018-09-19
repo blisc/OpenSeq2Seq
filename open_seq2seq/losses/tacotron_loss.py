@@ -1,6 +1,7 @@
 # Copyright (c) 2018 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
+from six.moves import range
 
 import tensorflow as tf
 
@@ -19,6 +20,7 @@ class TacotronLoss(Loss):
 
   def get_optional_params(self):
     """Static method with description of optional parameters.
+
       Returns:
         dict:
             Dictionary containing all the parameters that **can** be
@@ -27,11 +29,13 @@ class TacotronLoss(Loss):
     """
     return {
         'use_mask': bool,
+        'add_kl': bool,
         'scale': float,
     }
 
   def _compute_loss(self, input_dict):
     """Computes loss according to the tacotron 2 paper.
+
     Args:
       input_dict (dict): inputs to compute loss::
         {
@@ -50,6 +54,7 @@ class TacotronLoss(Loss):
             stop_token: the stop_token of shape [batch, time]
           ]
         }
+
     Returns:
        Singleton loss tensor
     """
@@ -123,6 +128,7 @@ class TacotronLoss(Loss):
           axis=2
       )
     decoder_target = spec
+    # post_net_target = tf.exp(spec)
     post_net_target = spec
 
     if self.params.get("use_mask", True):
@@ -167,6 +173,12 @@ class TacotronLoss(Loss):
     if self._both:
       loss += mag_loss
 
+    if self.params.get("add_kl", False):
+      mean = input_dict['decoder_output']['mean']
+      log_std = input_dict['decoder_output']['log_std']
+      kl_loss = -0.5 * tf.reduce_sum(1. + 2.*log_std - tf.square(mean) - tf.exp(2.*log_std), 1)
+      kl_loss = tf.reduce_mean(kl_loss)
+      loss = loss + kl_loss
     if self.params.get("scale", None):
       loss = loss * self.params["scale"]
     return loss

@@ -96,9 +96,11 @@ class Tacotron2Decoder(Decoder):
         Decoder.get_required_params(), **{
             'attention_layer_size': int,
             'attention_type': ['bahdanau', 'location', None],
+            'attention_rnn_enable': bool,
             'decoder_cell_units': int,
             'decoder_cell_type': None,
             'decoder_layers': int,
+            'scheduled_sampling_prob': float,
         }
     )
 
@@ -106,6 +108,9 @@ class Tacotron2Decoder(Decoder):
   def get_optional_params():
     return dict(
         Decoder.get_optional_params(), **{
+            'attention_rnn_units': int,
+            'attention_rnn_layers': int,
+            'attention_rnn_cell_type': None,
             'bahdanau_normalize': bool,
             'time_major': bool,
             'use_swap_memory': bool,
@@ -119,11 +124,16 @@ class Tacotron2Decoder(Decoder):
             'postnet_bn_epsilon': float,
             'postnet_data_format': ['channels_first', 'channels_last'],
             'postnet_keep_dropout_prob': float,
+            'anneal_teacher_forcing': bool,
+            'anneal_teacher_forcing_stop_gradient': bool,
             'mask_decoder_sequence': bool,
+            'use_prenet_output': bool,
             'attention_bias': bool,
             'zoneout_prob': float,
             'dropout_prob': float,
+            'stop_token_choice': [1, 2, 3],
             'parallel_iterations': int,
+            'use_state_for_location': bool,
         }
     )
 
@@ -140,12 +150,22 @@ class Tacotron2Decoder(Decoder):
     * **attention_type** (string) --- Determines whether attention mechanism to
       use, should be one of 'bahdanau', 'location', or None.
       Use of 'location'-sensitive attention is strongly recommended.
-    * **bahdanau_normalize** (bool) --- Whether to enable weight norm on the
-      attention parameters. Defaults to False.
+    * **attention_rnn_enable** (bool) --- Whether to create a rnn layer for the
+      attention mechanism. If false, the attention mechanism is wrapped around
+      the decoder rnn
+    * **attention_rnn_units** (int) --- dimension of attention RNN cells if
+      enabled. Defaults to 1024.
+    * **attention_rnn_layers** (int) --- number of attention RNN layers to use
+      if enabled. Defaults to 1.
+    * **attention_rnn_cell_type** (callable) --- Any valid RNN cell class.
+      Currently, only 'lstm' has been tested. Defaults to 'lstm'.
+    * **bahdanau_normalize** (bool) ---  Defaults to False.
     * **decoder_cell_units** (int) --- dimension of decoder RNN cells.
     * **decoder_layers** (int) --- number of decoder RNN layers to use.
     * **decoder_cell_type** (callable) --- could be "lstm", "gru", "glstm", or
       "slstm". Currently, only 'lstm' has been tested. Defaults to 'lstm'.
+    * **scheduled_sampling_prob** (float) --- probability for scheduled
+      sampling. Set to 0 for teacher forcing.
     * **time_major** (bool) --- whether to output as time major or batch major.
       Default is False for batch major.
     * **use_swap_memory** (bool) --- default is False.
@@ -196,15 +216,27 @@ class Tacotron2Decoder(Decoder):
       "channels_last". Defaults to "channels_last".
     * **postnet_keep_dropout_prob** (float) --- keep probability for dropout in
       the postnet conv layers. Default to 0.5.
-    * **mask_decoder_sequence** (bool) --- Defaults to True.
+    * **anneal_teacher_forcing** (bool) --- Whether to use scheduled sampling
+      and increase the probability / anneal the use of teacher forcing as
+      training progresses. Currently only a fixed staircase increase is
+      supported. If True, it will override the scheduled_sampling_prob
+      parameter. Defaults to False.
+    * **anneal_teacher_forcing_stop_gradient** (bool) --- If
+      anneal_teacher_forcing is True, tf.stop_gradient is called on the inputs
+      to the decoder to prevent back propogation through the scheduled sampler.
+      Defaults to False
+    * **mask_decoder_sequence** (bool) --- Defaults to True
+    * **use_prenet_output** (bool) --- Wether to pass the prenet output to the
+      attention rnn. Defaults to True.
     * **attention_bias** (bool) --- Wether to use a bias term when calculating
       the attention. Only works for "location" attention. Defaults to False.
-    * **zoneout_prob** (float) --- zoneout probability for rnn layers.
-      Defaults to 0.
-    * **dropout_prob** (float) --- dropout probability for rnn layers.
-      Defaults to 0.1
+    * **zoneout_prob** (float) --- zoneout probability. Defaults to 0.1
+    * **stop_token_choice** (int) --- 1 for paper, 2 for post decrnn, 3 for post
+      postnet. **DOCUMENTATION NEEDS TO BE UPDATED**
     * **parallel_iterations** (int) --- Number of parallel_iterations for
       tf.while loop inside dynamic_decode. Defaults to 32.
+    * **use_state_for_location** (bool) --- Use attention state to store
+      cumulative location. If false, stores inside self var
     """
 
     super(Tacotron2Decoder, self).__init__(params, model, name, mode)
@@ -224,6 +256,7 @@ class Tacotron2Decoder(Decoder):
       encoder_outputs,
       encoder_sequence_length,
       attention_bias,
+      use_state=True
   ):
     """
     Builds Attention part of the graph.
@@ -239,6 +272,7 @@ class Tacotron2Decoder(Decoder):
             probability_fn=tf.nn.softmax,
             dtype=tf.get_variable_scope().dtype,
             use_bias=attention_bias,
+            use_state=use_state
         )
       elif self.params['attention_type'] == 'bahdanau':
         bah_normalize = self.params.get('bahdanau_normalize', False)
@@ -259,39 +293,37 @@ class Tacotron2Decoder(Decoder):
     Decodes representation into data
 
     Args:
-      input_dict (dict): Python dictionary with inputs to decoder. Must define:
-          * src_inputs - decoder input Tensor of shape [batch_size, time, dim]
-            or [time, batch_size, dim]
-          * src_lengths - decoder input lengths Tensor of shape [batch_size]
-          * tgt_inputs - Only during training. labels Tensor of the
-            shape [batch_size, time, num_features] or
-            [time, batch_size, num_features]
-          * stop_token_inputs - Only during training. labels Tensor of the
-            shape [batch_size, time, 1] or [time, batch_size, 1]
-          * tgt_lengths - Only during training. labels lengths
-            Tensor of the shape [batch_size]
+      input_dict (dict): Python dictionary with inputs to decoder
 
+    Must define:
+      * src_inputs - decoder input Tensor of shape [batch_size, time, dim]
+                     or [time, batch_size, dim]
+      * src_lengths - decoder input lengths Tensor of shape [batch_size]
+      * tgt_inputs - Only during training. labels Tensor of the
+                     shape [batch_size, time, num_features] or
+                     [time, batch_size, num_features]
+      * stop_token_inputs - Only during training. labels Tensor of the
+                     shape [batch_size, time, 1] or [time, batch_size, 1]
+      * tgt_lengths - Only during training. labels lengths
+                      Tensor of the shape [batch_size]
     Returns:
-      dict:
-        A python dictionary containing:
-
-          * outputs - array containing:
-
-              * decoder_output - tensor of shape [batch_size, time,
-                num_features] or [time, batch_size, num_features]. Spectrogram
-                representation learned by the decoder rnn
-              * spectrogram_prediction - tensor of shape [batch_size, time,
-                num_features] or [time, batch_size, num_features]. Spectrogram
-                containing the residual corrections from the postnet if enabled
-              * alignments - tensor of shape [batch_size, time, memory_size]
-                or [time, batch_size, memory_size]. The alignments learned by
-                the attention layer
-              * stop_token_prediction - tensor of shape [batch_size, time, 1]
-                or [time, batch_size, 1]. The stop token predictions
-              * final_sequence_lengths - tensor of shape [batch_size]
-          * stop_token_predictions - tensor of shape [batch_size, time, 1]
-            or [time, batch_size, 1]. The stop token predictions for use inside
-            the loss function.
+      a Python dictionary with:
+        * outputs - array containing
+          * decoder_output - tensor of shape [batch_size, time, num_features]
+            or [time, batch_size, num_features]. Spectrogram representation
+            learned by the decoder rnn
+          * spectrogram_prediction - tensor of shape [batch_size, time,
+            num_features] or [time, batch_size, num_features]. Spectrogram
+            containing the residual corrections from the postnet if enabled
+          * alignments - tensor of shape [batch_size, time, memory_size]
+            or [time, batch_size, memory_size]. The alignments learned by the
+            attention layer
+          * stop_token_prediction - tensor of shape [batch_size, time, 1]
+            or [time, batch_size, 1]. The stop token predictions
+          * final_sequence_lengths - tensor of shape [batch_size]
+        * stop_token_predictions - tensor of shape [batch_size, time, 1]
+          or [time, batch_size, 1]. The stop token predictions for use inside
+          the loss function.
     """
     encoder_outputs = input_dict['encoder_output']['outputs']
     enc_src_lengths = input_dict['encoder_output']['src_length']
@@ -345,11 +377,12 @@ class Tacotron2Decoder(Decoder):
 
     cell_params = {}
     cell_params["num_units"] = self.params['decoder_cell_units']
+    # cell_params["initializer"] = tf.random_uniform_initializer(-0.0625, 0.0625)
     decoder_cells = [
         single_cell(
             cell_class=self.params['decoder_cell_type'],
             cell_params=cell_params,
-            zoneout_prob=self.params.get("zoneout_prob", 0.),
+            zoneout_prob=self.params.get("zoneout_prob", 0.1),
             dp_output_keep_prob=1.-self.params.get("dropout_prob", 0.1),
             training=training,
         ) for _ in range(self.params['decoder_layers'])
@@ -358,29 +391,81 @@ class Tacotron2Decoder(Decoder):
     if self.params['attention_type'] is not None:
       attention_mechanism = self._build_attention(
           encoder_outputs, enc_src_lengths,
-          self.params.get("attention_bias", False)
+          self.params.get("attention_bias", False),
+          use_state=self.params.get("use_state_for_location", True)
       )
 
-      attention_cell = tf.contrib.rnn.MultiRNNCell(decoder_cells)
+      if self.params["attention_rnn_enable"]:
+        cell_type = self.params.get(
+            'attention_rnn_cell_type', tf.nn.rnn_cell.LSTMCell
+        )
+        cell_params = {}
+        cell_params["num_units"] = self.params.get('attention_rnn_units', 1024)
+        attention_cells = [
+            single_cell(
+                cell_class=cell_type,
+                cell_params=cell_params,
+                zoneout_prob=self.params.get("zoneout_prob", 0.1),
+                dp_output_keep_prob=1.-self.params.get("dropout_prob", 0.1),
+                training=training
+            ) for _ in range(self.params.get('attention_rnn_layers', 1))
+        ]
+        attention_cell = tf.contrib.rnn.MultiRNNCell(attention_cells)
+      else:
+        attention_cell = tf.contrib.rnn.MultiRNNCell(decoder_cells)
 
+      if self.params["attention_rnn_enable"]:
+        output_attention = True
+      else:
+        output_attention = "both"
       attentive_cell = AttentionWrapper(
           cell=attention_cell,
           attention_mechanism=attention_mechanism,
           alignment_history=True,
-          output_attention="both",
+          output_attention=output_attention,
       )
 
-      decoder_cell = attentive_cell
+      if not self.params["attention_rnn_enable"]:
+        decoder_cell = attentive_cell
 
-    if self.params['attention_type'] is None:
+    if (self.params['attention_type'] is None or
+        self.params["attention_rnn_enable"]):
       decoder_cell = tf.contrib.rnn.MultiRNNCell(decoder_cells)
+
 
     if self._mode == "train":
       train_and_not_sampling = True
+      if self.params.get('anneal_sampling_prob', False):
+        if "128" in self._model.get_data_layer().params['dataset_files'][0]:
+          train_size = 128.
+        else:
+          train_size = 10480.
+        curr_epoch = tf.div(
+            tf.cast(tf.train.get_or_create_global_step(), self.params["dtype"]),
+            tf.constant(train_size / _batch_size, self.params["dtype"])
+        )
+        curr_step = tf.floor(
+            tf.div(
+                curr_epoch, tf.constant(self._model.params["num_epochs"] / 20.)
+            )
+        )
+        sampling_prob = tf.div(curr_step, tf.constant(20.))
+        train_and_not_sampling = False
+      else:
+        sampling_prob = self.params['scheduled_sampling_prob']
+        if sampling_prob > 0.:
+          train_and_not_sampling = False
       helper = TacotronTrainingHelper(
           inputs=spec,
           sequence_length=spec_length,
           prenet=None,
+          sampling_prob=sampling_prob,
+          anneal_teacher_forcing=self.params.get(
+              'anneal_teacher_forcing', False
+          ),
+          stop_gradient=self.params.get(
+              "anneal_teacher_forcing_stop_gradient", False
+          ),
           model_dtype=self.params["dtype"],
           mask_decoder_sequence=self.params.get("mask_decoder_sequence", True)
       )
@@ -398,13 +483,20 @@ class Tacotron2Decoder(Decoder):
       raise ValueError("Unknown mode for decoder: {}".format(self._mode))
     decoder = TacotronDecoder(
         decoder_cell=decoder_cell,
+        attention_cell=attentive_cell,
         helper=helper,
         initial_decoder_state=decoder_cell.zero_state(
+            _batch_size, self.params["dtype"]
+        ),
+        initial_attention_state=attentive_cell.zero_state(
             _batch_size, self.params["dtype"]
         ),
         attention_type=self.params["attention_type"],
         spec_layer=output_projection_layer,
         stop_token_layer=stop_token_projection_layer,
+        use_prenet_output=self.params.get("use_prenet_output", True),
+        stop_token_choice=self.params.get("stop_token_choice", 1),
+        attention_rnn_enable=self.params["attention_rnn_enable"],
         prenet=prenet,
         dtype=self.params["dtype"],
         train=train_and_not_sampling
@@ -432,7 +524,10 @@ class Tacotron2Decoder(Decoder):
       # If we are in train and doing sampling, we need to do the projections
       if train_and_not_sampling:
         decoder_spec_output = output_projection_layer(decoder_output)
-        stop_token_logits = stop_token_projection_layer(decoder_spec_output)
+        if self.params.get("stop_token_choice", 1) == 1:
+          stop_token_logits = stop_token_projection_layer(decoder_output)
+        elif self.params.get("stop_token_choice", 1) == 2:
+          stop_token_logits = stop_token_projection_layer(decoder_spec_output)
         decoder_output = decoder_spec_output
 
     ## Add the post net ##
@@ -450,6 +545,7 @@ class Tacotron2Decoder(Decoder):
         if ch_out == -1:
           if self._both:
             ch_out = self._n_feats["mel"]
+            # ch_out = 512
           else:
             ch_out = self._n_feats
 
@@ -487,6 +583,8 @@ class Tacotron2Decoder(Decoder):
       vars_to_regularize += attention_mechanism.memory_layer.trainable_variables
       vars_to_regularize += output_projection_layer.trainable_variables
       vars_to_regularize += stop_token_projection_layer.trainable_variables
+      if self.params["attention_rnn_enable"]:
+        vars_to_regularize += decoder_cell.trainable_variables
 
       for weights in vars_to_regularize:
         if "bias" not in weights.name:
@@ -504,15 +602,32 @@ class Tacotron2Decoder(Decoder):
         prenet.add_regularization(regularizer)
 
     if self.params['attention_type'] is not None:
-      alignments = tf.transpose(
-          final_state.alignment_history.stack(), [1, 0, 2]
-      )
+      if self.params['attention_rnn_enable']:
+        alignments = tf.transpose(
+            final_state[0].alignment_history.stack(), [1, 0, 2]
+        )
+      else:
+        alignments = tf.transpose(
+            final_state.alignment_history.stack(), [1, 0, 2]
+        )
     else:
       alignments = tf.zeros([_batch_size, _batch_size, _batch_size])
 
     spectrogram_prediction = decoder_output + top_layer
     if self._both:
       mag_spec_prediction = spectrogram_prediction
+      # mag_spec_prediction = f.exp(mag_spec_prediction)
+      # # spectrogram_prediction = top_layer
+      # mag_spec_prediction = tf.layers.dense(
+      #     tf.exp(top_layer),
+      #     # top_layer,
+      #     self._n_feats["magnitude"],
+      #     name="post_net_proj",
+      #     use_bias=False,
+      #     # kernel_regularizer=regularizer
+      # )
+      # Try two layer conv net instead
+      # mag_spec_prediction = tf.exp(mag_spec_prediction)
       mag_spec_prediction = conv_bn_actv(
           layer_type="conv1d",
           name="conv_0",
@@ -543,19 +658,41 @@ class Tacotron2Decoder(Decoder):
           bn_momentum=self.params.get('postnet_bn_momentum', 0.1),
           bn_epsilon=self.params.get('postnet_bn_epsilon', 1e-5),
       )
+      # spectrogram_prediction = top_layer
       if self._model.get_data_layer()._exp_mag:
         mag_spec_prediction = tf.exp(mag_spec_prediction)
+      # mag_spec_prediction = tf.layers.dense(
+      #     mag_spec_prediction,
+      #     self._n_feats["magnitude"],
+      #     name="post_net_proj",
+      #     use_bias=False,
+      #     # kernel_regularizer=regularizer
+      # )
       mag_spec_prediction = tf.layers.conv1d(
           mag_spec_prediction,
           self._n_feats["magnitude"],
           1,
           name="post_net_proj",
           use_bias=False,
+          # kernel_regularizer=regularizer
       )
     else:
       mag_spec_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
 
+    with tf.variable_scope("decoder"):
+      if self.params.get("stop_token_choice", 1) == 3:
+        stop_token_logits = stop_token_projection_layer(spectrogram_prediction)
+
     stop_token_prediction = tf.sigmoid(stop_token_logits)
+
+    # spectrogram_prediction = tf.layers.conv1d(
+    #     tf.exp(spectrogram_prediction),
+    #     80,
+    #     1,
+    #     name="mel_exp",
+    #     use_bias=False
+    # )
+
     outputs = [
         decoder_output, spectrogram_prediction, alignments,
         stop_token_prediction, sequence_lengths, mag_spec_prediction
@@ -564,4 +701,6 @@ class Tacotron2Decoder(Decoder):
     return {
         'outputs': outputs,
         'stop_token_prediction': stop_token_logits,
+        'mean': input_dict['encoder_output']['mean'],
+        'log_std': input_dict['encoder_output']['log_std']
     }
