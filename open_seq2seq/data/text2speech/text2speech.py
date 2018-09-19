@@ -60,17 +60,20 @@ class Text2SpeechDataLayer(DataLayer):
 
   def __init__(self, params, model, num_workers=None, worker_id=None):
     """Text-to-speech data layer constructor.
+
     See parent class for arguments description.
+
     Config parameters:
+
     * **dataset** (str) --- The dataset to use. Currently 'LJ' for the LJSpeech
-      1.1 dataset and 'Librispeech' for the Librispeech dataset are supported.
+      1.1 dataset is supported.
     * **num_audio_features** (int) --- number of audio features to extract.
     * **output_type** (str) --- could be either "magnitude", or "mel".
     * **vocab_file** (str) --- path to vocabulary file.
     * **dataset_files** (list) --- list with paths to all dataset .csv files.
       File is assumed to be separated by "|".
     * **dataset_location** (string) --- string with path to directory where wavs
-      are stored. Required if using LJ dataset but not used for Librispeech.
+      are stored.
     * **feature_normalize** (bool) --- whether to normlize the data with a
       preset mean and std
     * **feature_normalize_mean** (bool) --- used for feature normalize.
@@ -78,16 +81,32 @@ class Text2SpeechDataLayer(DataLayer):
     * **feature_normalize_std** (bool) --- used for feature normalize.
       Defaults to 1.
     * **mag_power** (int) --- the power to which the magnitude spectrogram is
-      scaled to:
+      scaled to. Defaults to 1.
       1 for energy spectrogram
       2 for power spectrogram
       Defaults to 2.
     * **pad_EOS** (bool) --- whether to apply EOS tokens to both the text and
       the speech signal. Will pad at least 1 token regardless of pad_to value.
       Defaults to True.
+    * **pad_value** (float) --- The value we pad the spectrogram with. Defaults
+      to np.log(data_min).
     * **pad_to** (int) --- we pad such that the resulting datapoint is a
       multiple of pad_to.
       Defaults to 8.
+    * **trim** (bool) --- Whether to trim silence via librosa or not. Defaults
+      to False.
+    * **data_min** (float) --- min clip value prior to taking the log. Defaults
+      to 1e-5. Please change to 1e-2 if using htk mels.
+    * **duration_min** (int) --- Minimum duration in steps for speech signal.
+      All signals less than this will be cut from the training set. Defaults to
+      0.
+    * **duration_max** (int) --- Maximum duration in steps for speech signal.
+      All signals greater than this will be cut from the training set. Defaults 
+      to 4000.
+    * **mel_type** (str): One of ['slaney', 'htk']. Decides which algorithm to
+      use to compute mel specs.
+      Defaults to htk.
+
     """
     super(Text2SpeechDataLayer, self).__init__(
         params,
@@ -382,13 +401,15 @@ class Text2SpeechDataLayer(DataLayer):
 
   def _parse_audio_transcript_element(self, element):
     """Parses tf.data element from TextLineDataset into audio and text.
+
     Args:
       element: tf.data element from TextLineDataset.
+
     Returns:
       tuple: text_input text as `np.array` of ids, text_input length,
       target audio features as `np.array`, stop token targets as `np.array`,
-      length of target sequence,
-      .
+      length of target sequence.
+
     """
     audio_filename, transcript = element
     transcript = transcript.lower()
@@ -607,8 +628,10 @@ class Text2SpeechDataLayer(DataLayer):
 
   def _parse_transcript_element(self, transcript):
     """Parses text from file and returns array of text features.
+
     Args:
       transcript: the string to parse.
+
     Returns:
       tuple: target text as `np.array` of ids, target text length.
     """
@@ -679,8 +702,10 @@ class Text2SpeechDataLayer(DataLayer):
 
   def create_feed_dict(self, model_in):
     """ Creates the feed dict for interactive infer
+
     Args:
       model_in (str): The string to be spoken.
+
     Returns:
       feed_dict (dict): Dictionary with values for the placeholders.
     """
@@ -726,8 +751,10 @@ class Text2SpeechDataLayer(DataLayer):
   def get_magnitude_spec(self, spectrogram, is_mel=None):
     """Returns an energy magnitude spectrogram. The processing depends on the
     data leyer params.
+
     Args:
       spectrogram: output spec from model
+
     Returns:
       mag_spec: mag spec
     """

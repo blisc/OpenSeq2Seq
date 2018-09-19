@@ -11,7 +11,7 @@ from open_seq2seq.optimizers.lr_policies import fixed_lr, transformer_policy, ex
 
 base_model = Text2Speech
 
-data_root = replace
+# data_root = replace
 
 # data_root = "/raid2/MAILABS/de_DE/by_book/female/eva_k/toten_seelen/"
 # data_root = "/raid2/MAILABS/en_US/by_book/female/mary_ann/northandsouth/"
@@ -19,7 +19,7 @@ data_root = replace
 # data_root = "/raid2/MAILABS/en_US/by_book/"
 # data_root = "/raid2/MAILABS/en_UK/by_book/female/elizabeth_klett/jane_eyre/"
 # data_root = "/raid2/MAILABS/"
-# data_root = "/data/speech/LJSpeech/"
+data_root = "/data/speech/LJSpeech/"
 # data_root = "/data/librispeech/"
 
 output_type = "both"
