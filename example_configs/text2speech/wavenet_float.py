@@ -71,14 +71,14 @@ base_params = {
 	"data_layer_params": {
 		"dataset": "LJ",
 		"num_audio_features": 80,
-		"dataset_location": "data/speech/LJSpeech/wavs/"
+		"dataset_location": "/data/speech/LJSpeech/wavs/"
 	}
 }
 
 train_params = {
 	"data_layer_params": {
 		"dataset_files": [
-			"data/speech/LJSpeech/train.csv",
+			"/data/speech/LJSpeech/train.csv",
 		],
 		"shuffle": True,
 	},
@@ -87,7 +87,7 @@ train_params = {
 eval_params = {
 	"data_layer_params": {
 		"dataset_files": [
-			"data/speech/LJSpeech/val.csv",
+			"/data/speech/LJSpeech/val.csv",
 		],
 		"shuffle": False,
 	},

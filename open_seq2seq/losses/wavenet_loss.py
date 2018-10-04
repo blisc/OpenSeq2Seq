@@ -26,11 +26,12 @@ class WavenetLoss(Loss):
 
 		loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=outputs)
 
-		mask = tf.sequence_mask(
-				lengths=input_dict["target_tensors"][1], dtype=tf.float32
-		)
-		loss = loss * mask
-		count = tf.reduce_sum(tf.multiply(tf.ones_like(loss), mask))
-		loss = tf.div(tf.reduce_sum(loss), count)
+		# mask = tf.sequence_mask(
+		# 		lengths=input_dict["target_tensors"][1], dtype=tf.float32
+		# )
+		# loss = loss * mask
+		# count = tf.reduce_sum(tf.multiply(tf.ones_like(loss), mask))
+		# loss = tf.div(tf.reduce_sum(loss), count)
+		loss = tf.reduce_mean(loss)
 
 		return loss

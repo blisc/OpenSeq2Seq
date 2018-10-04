@@ -54,7 +54,7 @@ base_params = {
     "convnet_layers": [
       {
         "kernel_size": [1,8], "stride": [1,4],
-        "num_channels": 128, "dropout_keep_prob": 0.8,
+        "num_channels": 32, "dropout_keep_prob": 0.9,
       },
       # {
       #   "kernel_size": [1,8], "stride": [1,2],
@@ -62,7 +62,7 @@ base_params = {
       # },
       {
         "kernel_size": [1,8], "stride": [1,4],
-        "num_channels": 128, "dropout_keep_prob": 0.8,
+        "num_channels": 32, "dropout_keep_prob": 0.8,
       },
       # {
       #   "kernel_size": [1,8], "stride": [1,2],
@@ -70,7 +70,7 @@ base_params = {
       # },
       {
         "kernel_size": [1,8], "stride": [1,4],
-        "num_channels": 256,"dropout_keep_prob": 0.7,
+        "num_channels": 64,"dropout_keep_prob": 0.7,
       },
       # {
       #   "kernel_size": [1,8], "stride": [1,2],
@@ -78,7 +78,7 @@ base_params = {
       # },
       {
         "kernel_size": [1,8], "stride": [1,4],
-        "num_channels": 256, "dropout_keep_prob": 0.6,
+        "num_channels": 64, "dropout_keep_prob": 0.6,
       },
       # {
       #   "kernel_size": [1,8], "stride": [1,2],

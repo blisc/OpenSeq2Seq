@@ -10,18 +10,13 @@ def _mu_law_encode(signal, channels):
   safe_audio_abs = tf.minimum(tf.abs(signal), 1.0)
   magnitude = tf.log1p(mu * safe_audio_abs) / tf.log1p(mu)
   signal = tf.sign(signal) * magnitude
-
   return tf.to_int32((signal + 1) / 2 * mu + 0.5)
 
-def _mu_law_decode(output, quantization_channels):
-  '''Recovers waveform from quantized values.'''
-  with tf.name_scope('decode'):
-    mu = quantization_channels - 1
-    # Map values back to [-1, 1].
-    signal = 2 * (tf.to_float(output) / mu) - 1
-    # Perform inverse of mu-law transformation.
-    magnitude = (1 / mu) * ((1 + mu)**abs(signal) - 1)
-    return tf.sign(signal) * magnitude
+def _mu_law_decode(output, channels):
+  mu = channels - 1
+  signal = 2 * (tf.to_float(output) / mu) - 1
+  magnitude = (1 / mu) * ((1 + mu)**abs(signal) - 1)
+  return tf.sign(signal) * magnitude
 
 class WavenewEncoder(Encoder):
 
@@ -102,7 +97,7 @@ class WavenewEncoder(Encoder):
         layer_type="conv1d",
         name="preprocess_1",
         inputs=inputs,
-        filters=512,
+        filters=256,
         kernel_size=1,
         activation_fn=self.params['activation_fn'],
         strides=1,
@@ -154,7 +149,7 @@ class WavenewEncoder(Encoder):
         layer_type="conv1d",
         name="postprocess_1",
         inputs=inputs,
-        filters=512,
+        filters=256,
         kernel_size=1,
         activation_fn=self.params['activation_fn'],
         strides=1,
@@ -182,7 +177,9 @@ class WavenewEncoder(Encoder):
         bn_epsilon=self.params.get('bn_epsilon', 1e-5),
     )
     audio = tf.argmax(tf.nn.softmax(outputs), axis=-1, output_type=tf.int32)
+    audio = tf.expand_dims(audio, -1)
+    enc_output = audio
     audio = _mu_law_decode(audio, self.params["quantization_channels"])
     audio = tf.cast(audio, tf.float32)
 
-    return {"logits": outputs, "outputs": [encoded_input, audio]}
+    return {"logits": outputs, "outputs": [encoded_input, audio, enc_output]}

@@ -47,6 +47,12 @@ def causal_conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activati
 
 	return block
 
+def _mu_law_decode(output, channels):
+	mu = channels - 1
+	signal = 2 * (tf.to_float(output) / mu) - 1
+	magnitude = (1 / mu) * ((1 + mu)**abs(signal) - 1)
+	return tf.sign(signal) * magnitude
+
 def wavenet_conv_block(layer_type, name, inputs, condition, filters, kernel_size, activation_fn, strides,
 				padding, regularizer, training, data_format, bn_momentum, bn_epsilon, layers_per_block, upsample_factor):
 	
@@ -213,8 +219,9 @@ class WavenetEncoder(Encoder):
 		"""
 
 		# takes raw audio and spectrograms
-		source, src_length = input_dict["source_tensors"][0]
-		spectrogram, spec_length = input_dict["source_tensors"][1]
+		# source, src_length = input_dict["source_tensors"][0]
+		# spectrogram, spec_length = input_dict["source_tensors"][1]
+		source, src_length, spectrogram, spec_length = input_dict["source_tensors"]
 
 		# add dummy dimension to raw audio (1 channel)
 		source = tf.expand_dims(source, 2)
@@ -360,4 +367,9 @@ class WavenetEncoder(Encoder):
 		outputs = tf.slice(outputs, [0, receptive_field, 0], [-1, -1, -1])
 		encoded_input = tf.slice(encoded_input, [0, receptive_field, 0], [-1, -1, -1])
 
-		return { "logits": outputs, "outputs": [encoded_input] }
+		audio = tf.argmax(tf.nn.softmax(outputs), axis=-1, output_type=tf.int32)
+		audio = tf.expand_dims(audio, -1)
+		audio = _mu_law_decode(audio, self.params["quantization_channels"])
+		audio = tf.cast(audio, tf.float32)
+
+		return { "logits": outputs, "outputs": [encoded_input, audio] }
