@@ -682,6 +682,8 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
           log_spec)[..., :self.params["num_audio_features"]]
     # Else if it is mag, get log mag
     else:
+      spec = tf.slice(
+          spec, [0, 0, 0], [-1, -1, self.params["num_audio_features"]])
       log_spec = tf.log(spec + log_offset)
 
     # mean, variance = tf.nn.moments(log_spec, axes=[1, 2])

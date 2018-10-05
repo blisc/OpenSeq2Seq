@@ -3,7 +3,7 @@ import tensorflow as tf
 from open_seq2seq.models import Speech2Text
 from open_seq2seq.encoders import DeepSpeech2Encoder
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
-from open_seq2seq.data import Speech2TextDataLayer
+from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer, Speech2TextTensorFlowDataLayer
 from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
@@ -16,7 +16,7 @@ base_params = {
   "num_gpus": 8,
   "batch_size_per_gpu": 16,
 
-  "num_epochs": 50,
+  "num_epochs": 100,
 
   "save_summaries_steps": 100,
   "print_loss_steps": 10,
