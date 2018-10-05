@@ -59,9 +59,13 @@ base_params = {
         "kernel_size": [11, 21], "stride": [1, 2],
         "num_channels": 32, "padding": "SAME"
       },
+      {
+        "kernel_size": [11, 21], "stride": [1, 1],
+        "num_channels": 32, "padding": "SAME"
+      },
     ],
-    "num_rnn_layers": 5,
-    "rnn_cell_dim": 800,
+    "num_rnn_layers": 6,
+    "rnn_cell_dim": 1024,
 
     "use_cudnn_rnn": True,
     "rnn_type": "cudnn_gru",
@@ -107,6 +111,7 @@ train_params = {
       "data/librispeech/librivox-train-clean-100.csv",
       "data/librispeech/librivox-train-clean-360.csv",
       "data/librispeech/librivox-train-other-500.csv",
+      "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
     ],
     "max_duration": 16.7,
     "shuffle": True,
