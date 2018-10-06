@@ -39,11 +39,10 @@ def main():
     hvd.init()
     if hvd.rank() == 0:
       deco_print("Using horovod")
+    from mpi4py import MPI
+    MPI.COMM_WORLD.Barrier()
   else:
     hvd = None
-
-  from mpi4py import MPI
-  MPI.COMM_WORLD.Barrier()
 
   if args.enable_logs:
     if hvd is None or hvd.rank() == 0:
