@@ -108,9 +108,9 @@ train_params = {
     #                  'noise_level_max': -60},
     "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
     "dataset_files": [
-      "data/librispeech/librivox-train-clean-100.csv",
-      "data/librispeech/librivox-train-clean-360.csv",
-      "data/librispeech/librivox-train-other-500.csv",
+      "/data/librispeech/librivox-train-clean-100.csv",
+      "/data/librispeech/librivox-train-clean-360.csv",
+      "/data/librispeech/librivox-train-other-500.csv",
       "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
     ],
     "max_duration": 16.7,
