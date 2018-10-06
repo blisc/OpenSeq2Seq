@@ -121,7 +121,7 @@ eval_params = {
     "input_type": "spectrogram",
     "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
     "dataset_files": [
-      "data/librispeech/librivox-dev-clean.csv",
+      "/data/librispeech/librivox-dev-clean.csv",
     ],
     "shuffle": False,
   },
