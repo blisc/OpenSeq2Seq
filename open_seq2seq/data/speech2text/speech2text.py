@@ -10,6 +10,7 @@ import tensorflow as tf
 import scipy.io.wavfile as wave
 import librosa
 import six
+import string
 from six import string_types
 from six.moves import range
 
@@ -17,7 +18,6 @@ from python_speech_features.base import get_filterbanks
 from open_seq2seq.data.data_layer import DataLayer
 from open_seq2seq.data.utils import load_pre_existing_vocabulary
 from .speech_utils import get_speech_features_from_file, get_speech_features, normalize_signal
-
 
 class Speech2TextDataLayer(DataLayer):
   """Speech-to-text data layer class."""
@@ -429,6 +429,12 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
     self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 1
 
     self._files = None
+
+    in_char = "\"'’“”àâèéêü"
+    out_char = "'''''aaeeeu"
+    punctuation = string.punctuation.replace("'","")
+    self.table = str.maketrans(in_char, out_char, punctuation)
+
     if self.params["interactive"]:
       return
 
@@ -565,6 +571,7 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
     if not six.PY2:
       transcript = str(transcript, 'utf-8')
       audio_filename = str(audio_filename, 'utf-8')
+    transcript = self._normalize_transcript(transcript)
     target = np.array([self.params['char2idx'][c] for c in transcript])
 
     if "gen_audio" in audio_filename:
@@ -729,3 +736,18 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
   def get_size_in_samples(self):
     """Returns the number of audio files."""
     return len(self._files)
+
+  def _normalize_transcript(self, text):
+    """Parses the transcript to remove punctation, lowercase all characters, and all non-ascii characters
+
+    Args:
+      text: the string to parse
+
+    Returns:
+      text: the normalized text
+    """
+    text = text.translate(self.table)
+    # text = text.encode('ascii', errors="ignore")
+    text = text.lower()
+    text = text.strip()
+    return text
