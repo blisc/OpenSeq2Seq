@@ -394,6 +394,7 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
         # 'pad_to': int,
         'max_duration': float,
         'trim': bool,
+        'syn_ver': [1,2]
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -554,13 +555,14 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
       x_id = tf.reshape(x_id, [self.params['batch_size']])
 
     # x, x_length = self._get_spec(x, x_length, mel_basis)
-    x, x_length = self._get_spec(x, x_length)
-    x.set_shape([self.params['batch_size'], None,
+    x_spec, x_length = self._get_spec(x, x_length)
+    x_spec.set_shape([self.params['batch_size'], None,
                  self.params['num_audio_features']])
     x_length = tf.reshape(x_length, [self.params['batch_size']])
 
     self._input_tensors = {}
-    self._input_tensors["source_tensors"] = [x, x_length]
+    # self._input_tensors["source_tensors"] = [x_spec, x_length, x]
+    self._input_tensors["source_tensors"] = [x_spec, x_length]
     if self.params['mode'] != 'infer':
       self._input_tensors['target_tensors'] = [y, y_length]
     else:
@@ -574,8 +576,10 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
     transcript = self._normalize_transcript(transcript)
     target = np.array([self.params['char2idx'][c] for c in transcript])
 
-    if "gen_audio" in audio_filename:
+    if self.params.get("syn_ver", 0) == 1:
       audio_filename = audio_filename.format(np.random.choice([46, 48, 50]))
+    elif self.params.get("syn_ver", 0) == 2:
+      audio_filename = audio_filename.format(np.random.choice(["1_50", "2_44", "3_47"]))
     if self.params.get("trim", False):
       signal, fs = librosa.core.load(audio_filename, sr=None)
       signal, _ = librosa.effects.trim(

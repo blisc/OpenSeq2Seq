@@ -191,6 +191,7 @@ train_params = {
         ],
         "max_duration": 16.7,
         "shuffle": True,
+        "syn_ver": 2,
     },
 }
 

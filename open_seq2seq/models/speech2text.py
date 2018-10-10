@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from six.moves import range
+from scipy.io.wavfile import write
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -156,12 +157,17 @@ class Speech2Text(EncoderDecoderModel):
   def finalize_evaluation(self, results_per_batch, training_step=None):
     total_word_lev = 0.0
     total_word_count = 0.0
+    # count = 0
+    # WER_total = 0.0
     for word_lev, word_count in results_per_batch:
       total_word_lev += word_lev
       total_word_count += word_count
+      # WER_total += word_lev/word_count
+      # count += 1
 
     total_wer = 1.0 * total_word_lev / total_word_count
     deco_print("Validation WER:  {:.4f}".format(total_wer), offset=4)
+    # deco_print("Validation WER:  {:.4f}".format(WER_total/count), offset=4)
     return {
         "Eval WER": total_wer,
     }
@@ -188,8 +194,20 @@ class Speech2Text(EncoderDecoderModel):
         true_text = true_text[:-4]
       pred_text = "".join(decoded_texts[sample_id])
 
-      total_word_lev += levenshtein(true_text.split(), pred_text.split())
-      total_word_count += len(true_text.split())
+      sample_lev = levenshtein(true_text.split(), pred_text.split())
+      sample_count = len(true_text.split())
+
+      # if sample_lev / sample_count > 0.2:
+      #   print("WER :{}".format(sample_lev / sample_count))
+      #   print(true_text.split())
+      #   print(pred_text.split())
+      #   audio = np.squeeze(input_values['source_tensors'][2])
+      #   audio = audio / np.max(np.abs(audio))
+      #   write("j_scripts/1.wav", 16000, audio.astype(float))
+      #   input()
+
+      total_word_lev += sample_lev
+      total_word_count += sample_count
 
     return total_word_lev, total_word_count
 

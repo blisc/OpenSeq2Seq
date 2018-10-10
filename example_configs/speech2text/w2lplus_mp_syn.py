@@ -8,7 +8,7 @@ from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 residual = True
-repeat = 4
+repeat = 5
 
 base_model = Speech2Text
 
@@ -158,6 +158,7 @@ train_params = {
         ],
         "max_duration": 16.7,
         "shuffle": True,
+        "syn_ver": 2,
     },
 }
 
