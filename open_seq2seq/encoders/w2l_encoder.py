@@ -167,6 +167,7 @@ class Wave2LetterEncoder(Encoder):
               name="res{}".format(idx_convnet+1),
               use_bias=False,
           )
+          # conv_feats = self.params['activation_fn'](conv_feats + layer_res)
           conv_feats = conv_feats + layer_res
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 

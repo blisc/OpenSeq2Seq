@@ -132,7 +132,7 @@ class Speech2TextDataLayer(DataLayer):
       if self.params['shuffle']:
         self._dataset = self._dataset.shuffle(self._size)
       self._dataset = self._dataset.repeat()
-      self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
+      # self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
       self._dataset = self._dataset.map(
           lambda line: tf.py_func(
               self._parse_audio_transcript_element,
@@ -158,7 +158,8 @@ class Speech2TextDataLayer(DataLayer):
                          1, [None], 1),
           padding_values=(
               tf.cast(0, self.params['dtype']), 0, self.target_pad_value, 0),
-      ).cache()
+      # ).cache()
+      )
     else:
       indices = self.split_data(
           np.array(list(map(str, range(len(self.all_files)))))
@@ -305,8 +306,10 @@ class Speech2TextDataLayer(DataLayer):
       target_indices = target_indices + [self.end_index]
     target = np.array(target_indices)
 
-    if "gen_audio" in audio_filename:
+    if self.params.get("syn_ver", 0) == 1:
       audio_filename = audio_filename.format(np.random.choice([46, 48, 50]))
+    elif self.params.get("syn_ver", 0) == 2:
+      audio_filename = audio_filename.format(np.random.choice(["1_50", "2_44", "3_47"]))
     pad_to = self.params.get('pad_to', 8)
     source, audio_duration = get_speech_features_from_file(
         audio_filename, self.params['num_audio_features'], pad_to,
