@@ -37,6 +37,7 @@ class Speech2TextDataLayer(DataLayer):
         'pad_to': int,
         'max_duration': float,
         'autoregressive': bool,
+        'syn_ver': [1,2]
     })
 
   def __init__(self, params, model, num_workers, worker_id):
