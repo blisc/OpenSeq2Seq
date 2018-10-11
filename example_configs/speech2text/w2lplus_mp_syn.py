@@ -145,7 +145,7 @@ base_params = {
 }
 
 train_params = {
-    "data_layer": Speech2TextTensorFlowDataLayer,
+    "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "num_audio_features": 64,
         "input_type": "logfbank",
@@ -163,7 +163,7 @@ train_params = {
 }
 
 eval_params = {
-    "data_layer": Speech2TextTensorFlowDataLayer,
+    "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "num_audio_features": 64,
         "input_type": "logfbank",
@@ -176,7 +176,7 @@ eval_params = {
 }
 
 infer_params = {
-    "data_layer": Speech2TextTensorFlowDataLayer,
+    "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "num_audio_features": 64,
         "input_type": "logfbank",
