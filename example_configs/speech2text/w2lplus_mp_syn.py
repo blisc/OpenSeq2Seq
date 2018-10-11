@@ -35,11 +35,11 @@ base_params = {
     "lr_policy": poly_decay,
     "lr_policy_params": {
         # "learning_rate": 0.05,
-        # "learning_rate": 0.01, ??
-        "learning_rate": 1e-4,
-        "min_lr": 1e-8,
+        "learning_rate": 0.01,
+        # "learning_rate": 1e-4,
+        "min_lr": 1e-5,
         "power": 2.0,
-        "begin_decay_at": 219600,
+        # "begin_decay_at": 219600,
     },
     "larc_params": {
         "larc_eta": 0.001,
