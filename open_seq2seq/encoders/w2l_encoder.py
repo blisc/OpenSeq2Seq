@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 import tensorflow as tf
 
 from .encoder import Encoder
-from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, conv_ln_actv, conv_in_actv
+from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, conv_ln_actv, conv_in_actv, conv_bn_res_bn_actv
 
 
 class Wave2LetterEncoder(Encoder):
@@ -143,32 +143,41 @@ class Wave2LetterEncoder(Encoder):
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
         else:
           src_length = (src_length + strides[0] - 1) // strides[0]
-        conv_feats = conv_block(
-            layer_type=layer_type,
-            name="conv{}{}".format(
-                idx_convnet + 1, idx_layer + 1),
-            inputs=conv_feats,
-            filters=ch_out,
-            kernel_size=kernel_size,
-            activation_fn=self.params['activation_fn'],
-            strides=strides,
-            padding=padding,
-            dilation=dilation,
-            regularizer=regularizer,
-            training=training,
-            data_format=data_format,
-            **normalization_params
-        )
         if residual and idx_layer == layer_repeat - 1:
-          layer_res = tf.layers.conv1d(
-              layer_res,
-              conv_feats.get_shape()[-1],
-              1,
-              name="res{}".format(idx_convnet+1),
-              use_bias=False,
+          conv_feats = conv_bn_res_bn_actv(
+              layer_type=layer_type,
+              name="conv{}{}".format(
+                  idx_convnet + 1, idx_layer + 1),
+              inputs=conv_feats,
+              res_inputs=layer_res,
+              filters=ch_out,
+              kernel_size=kernel_size,
+              activation_fn=self.params['activation_fn'],
+              strides=strides,
+              padding=padding,
+              dilation=dilation,
+              regularizer=regularizer,
+              training=training,
+              data_format=data_format,
+              **normalization_params
           )
-          # conv_feats = self.params['activation_fn'](conv_feats + layer_res)
-          conv_feats = conv_feats + layer_res
+        else:
+          conv_feats = conv_block(
+              layer_type=layer_type,
+              name="conv{}{}".format(
+                  idx_convnet + 1, idx_layer + 1),
+              inputs=conv_feats,
+              filters=ch_out,
+              kernel_size=kernel_size,
+              activation_fn=self.params['activation_fn'],
+              strides=strides,
+              padding=padding,
+              dilation=dilation,
+              regularizer=regularizer,
+              training=training,
+              data_format=data_format,
+              **normalization_params
+          )
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 
     outputs = conv_feats
