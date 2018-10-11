@@ -47,8 +47,29 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters, kernel_si
                         bn_epsilon, dilation=1):
   layer = layers_dict[layer_type]
 
-  res = layer(res_inputs)
-  res = bn(res)
+  res = tf.layers.conv1d(
+      res_inputs,
+      filters,
+      1,
+      name="{}/res".format(name),
+      use_bias=False,
+  )
+  squeeze = False
+  if layer_type == "conv1d":
+    axis = 1 if data_format == 'channels_last' else 2
+    res = tf.expand_dims(res, axis=axis)  # NWC --> NHWC
+    squeeze = True
+  res = tf.layers.batch_normalization(
+      name="{}/res_bn".format(name),
+      inputs=res,
+      gamma_regularizer=regularizer,
+      training=training,
+      axis=-1 if data_format == 'channels_last' else 1,
+      momentum=bn_momentum,
+      epsilon=bn_epsilon,
+  )
+  if squeeze:
+    res = tf.squeeze(res, axis=axis)
 
   conv = layer(
       name="{}".format(name),
