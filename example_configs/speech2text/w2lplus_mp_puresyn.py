@@ -15,7 +15,7 @@ base_model = Speech2Text
 base_params = {
     "random_seed": 0,
     "use_horovod": True,
-    "num_epochs": 400,
+    "num_epochs": 134,
 
     "num_gpus": 8,
     "batch_size_per_gpu": 128,
@@ -152,7 +152,9 @@ train_params = {
             # "/data/librispeech/librivox-train-clean-100.csv",
             # "/data/librispeech/librivox-train-clean-360.csv",
             # "/data/librispeech/librivox-train-other-500.csv",
-            "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
+            "/result/data_syn_1.txt",
+            "/result/data_syn_2.txt",
+            "/result/data_syn_3.txt",
         ],
         "max_duration": 16.7,
         "shuffle": True,
