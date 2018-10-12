@@ -583,7 +583,9 @@ class Speech2TextTensorFlowDataLayer(DataLayer):
     if self.params.get("syn_ver", 0) == 1:
       audio_filename = audio_filename.format(np.random.choice([46, 48, 50]))
     elif self.params.get("syn_ver", 0) == 2:
-      audio_filename = audio_filename.format(np.random.choice(["1_50", "2_44", "3_47"]))
+      audio_filename = audio_filename.format(np.random.choice(["1_50", "3_47"]))
+      # audio_filename = audio_filename.format(np.random.choice(["1_50", "2_44", "3_47"]))
+      # print(audio_filename)
     if self.params.get("trim", False):
       signal, fs = librosa.core.load(audio_filename, sr=None)
       signal, _ = librosa.effects.trim(
