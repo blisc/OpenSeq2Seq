@@ -188,6 +188,7 @@ train_params = {
             "/data/librispeech/librivox-train-clean-360.csv",
             "/data/librispeech/librivox-train-other-500.csv",
             "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
+            # "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
         ],
         "max_duration": 16.7,
         "shuffle": True,

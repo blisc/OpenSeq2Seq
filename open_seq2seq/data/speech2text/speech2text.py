@@ -37,7 +37,7 @@ class Speech2TextDataLayer(DataLayer):
         'pad_to': int,
         'max_duration': float,
         'autoregressive': bool,
-        'syn_ver': [1,2]
+        'syn_ver': [1,2,3]
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -308,9 +308,14 @@ class Speech2TextDataLayer(DataLayer):
     target = np.array(target_indices)
 
     if self.params.get("syn_ver", 0) == 1:
-      audio_filename = audio_filename.format(np.random.choice([46, 48, 50]))
+      choices = [46, 48, 50]
     elif self.params.get("syn_ver", 0) == 2:
-      audio_filename = audio_filename.format(np.random.choice(["1_50", "2_44", "3_47"]))
+      choices = ["1_50", "2_44", "3_47"]
+    elif self.params.get("syn_ver", 0) == 3:
+      choices = ["1_50", "2_44", "3_47", "50", "46", "48"]
+    else:
+      choices = [0]
+    audio_filename = audio_filename.format(np.random.choice(choices))
     pad_to = self.params.get('pad_to', 8)
     source, audio_duration = get_speech_features_from_file(
         audio_filename, self.params['num_audio_features'], pad_to,
