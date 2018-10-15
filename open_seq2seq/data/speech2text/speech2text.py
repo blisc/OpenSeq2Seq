@@ -59,7 +59,7 @@ class Speech2TextDataLayer(DataLayer):
         }
       For additional details on these parameters see
       :func:`data.speech2text.speech_utils.augment_audio_signal` function.
-    * **autoregressive** (bool) --- boolean indicating whether the model is autoregressive.  
+    * **autoregressive** (bool) --- boolean indicating whether the model is autoregressive.
     """
     super(Speech2TextDataLayer, self).__init__(params, model,
                                                num_workers, worker_id)
