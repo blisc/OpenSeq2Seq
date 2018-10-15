@@ -12,9 +12,9 @@ base_model = Speech2Text
 
 base_params = {
   "random_seed": 0,
-  "use_horovod": False,
+  "use_horovod": True,
   "num_gpus": 8,
-  "batch_size_per_gpu": 16,
+  "batch_size_per_gpu": 24,
 
   "num_epochs": 50,
 
@@ -99,13 +99,13 @@ base_params = {
 }
 
 train_params = {
-  "data_layer": Speech2TextTensorFlowDataLayer,
+  "data_layer": Speech2TextDataLayer,
   "data_layer_params": {
     "num_audio_features": 160,
     "input_type": "spectrogram",
-    # "augmentation": {'time_stretch_ratio': 0.05,
-    #                  'noise_level_min': -90,
-    #                  'noise_level_max': -60},
+    "augmentation": {'time_stretch_ratio': 0.05,
+                     'noise_level_min': -90,
+                     'noise_level_max': -60},
     "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
     "dataset_files": [
       "/data/librispeech/librivox-train-clean-100.csv",
@@ -115,11 +115,12 @@ train_params = {
     ],
     "max_duration": 16.7,
     "shuffle": True,
+    "syn_ver": 3,
   },
 }
 
 eval_params = {
-  "data_layer": Speech2TextTensorFlowDataLayer,
+  "data_layer": Speech2TextDataLayer,
   "data_layer_params": {
     "num_audio_features": 160,
     "input_type": "spectrogram",
