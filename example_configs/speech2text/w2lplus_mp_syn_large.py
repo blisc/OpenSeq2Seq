@@ -9,6 +9,7 @@ from open_seq2seq.optimizers.lr_policies import poly_decay
 
 residual = True
 repeat = 3
+dropout_factor = 1.
 
 base_model = Speech2Text
 
@@ -61,89 +62,89 @@ base_params = {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [11], "stride": [2],
                 "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [29], "stride": [1],
                 "num_channels": 896, "padding": "SAME",
-                "dilation":[2], "dropout_keep_prob": 0.6,
+                "dilation":[2], "dropout_keep_prob": 0.6 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [1], "stride": [1],
                 "num_channels": 1024, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.6,
+                "dilation":[1], "dropout_keep_prob": 0.6 * dropout_factor,
             }
         ],
 
