@@ -8,6 +8,33 @@ from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 residual = True
+residual_dense = True
+repeat_1 = 3
+repeat_2 = 3
+dropout_factor = 1.
+training_set = "combined"
+data_aug_enable = False
+
+if training_set == "libri":
+    dataset_files = [
+            "/data/librispeech/librivox-train-clean-100.csv",
+            "/data/librispeech/librivox-train-clean-360.csv",
+            "/data/librispeech/librivox-train-other-500.csv"]
+elif training_set == "combined":
+    dataset_files = [
+            "/data/librispeech/librivox-train-clean-100.csv",
+            "/data/librispeech/librivox-train-clean-360.csv",
+            "/data/librispeech/librivox-train-other-500.csv",
+            "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
+elif training_set == "syn":
+    dataset_files = ["/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
+
+data_aug = None
+if data_aug_enable == True:
+    data_aug = {
+            'time_stretch_ratio': 0.05,
+            'noise_level_min': -90,
+            'noise_level_max': -60}
 
 base_model = Speech2Text
 
@@ -27,18 +54,19 @@ base_params = {
     "save_checkpoint_steps": 1100,
     "logdir": "w2l_log_folder",
 
-    "optimizer": "Adam",
-    "optimizer_params": {},
+    "optimizer": "Momentum",
+    "optimizer_params": {
+        "momentum": 0.90,
+    },
     "lr_policy": poly_decay,
     "lr_policy_params": {
-        "learning_rate": 1e-3,
+        "learning_rate": 0.01,
+        "min_lr": 1e-5,
         "power": 2.0,
-        "min_lr": 1e-5
     },
-    # "larc_params": {
-    #     "larc_eta": 0.001,
-    # },
-    "max_grad_norm":1.,
+    "larc_params": {
+        "larc_eta": 0.001,
+    },
 
     "regularizer": tf.contrib.layers.l2_regularizer,
     "regularizer_params": {
@@ -58,58 +86,93 @@ base_params = {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [11], "stride": [2],
                 "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
-                "type": "conv1d", "repeat": 3,
+                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
-                "residual": residual
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": 3,
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [11], "stride": [1],
+                "num_channels": 256, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
+            },
+            {
+                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
-                "residual": residual
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": 3,
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [13], "stride": [1],
+                "num_channels": 384, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
+            },
+            {
+                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8,
-                "residual": residual
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": 3,
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [17], "stride": [1],
+                "num_channels": 512, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
+            },
+            {
+                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
-                "residual": residual
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": 3,
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [21], "stride": [1],
+                "num_channels": 640, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
+            },
+            {
+                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7,
-                "residual": residual
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
+            },
+            {
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [25], "stride": [1],
+                "num_channels": 768, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
+                "residual": residual, "residual_dense": residual_dense
             },
             {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [29], "stride": [1],
                 "num_channels": 896, "padding": "SAME",
-                "dilation":[2], "dropout_keep_prob": 0.6,
+                "dilation":[2], "dropout_keep_prob": 0.6 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [1], "stride": [1],
                 "num_channels": 1024, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.6,
+                "dilation":[1], "dropout_keep_prob": 0.6 * dropout_factor,
             }
         ],
 
-        "dropout_keep_prob": 0.7,
+        "dropout_keep_prob": 0.7 * dropout_factor,
 
         "initializer": tf.contrib.layers.xavier_initializer,
         "initializer_params": {
@@ -145,14 +208,11 @@ train_params = {
         "num_audio_features": 64,
         "input_type": "logfbank",
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        "dataset_files": [
-            "/data/librispeech/librivox-train-clean-100.csv",
-            "/data/librispeech/librivox-train-clean-360.csv",
-            "/data/librispeech/librivox-train-other-500.csv",
-            "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
-        ],
+        "augmentation": data_aug,
+        "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
+        "syn_ver": 3,
     },
 }
 

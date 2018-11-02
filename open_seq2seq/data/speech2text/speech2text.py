@@ -86,6 +86,18 @@ class Speech2TextDataLayer(DataLayer):
                                i in self.params['char2idx'].items()}
 
     self._files = None
+
+    # Check augmentation dict
+    if self.params.get('augmentation', None):
+      if 'time_stretch_ratio' not in self.params['augmentation']:
+        print("WARNING: Data augmentation is enabled but time_stretch_ratio",
+              "was not present in augmentation dict and will be skipped")
+      if ('noise_level_min' not in self.params['augmentation']
+          or 'noise_level_max' not in self.params['augmentation']):
+        print("WARNING: Data augmentation is enabled but either",
+              "noise_level_min or noise_level_max was not present in",
+              "augmentation dict and will be skipped")
+
     if self.params["interactive"]:
       return
     for csv in params['dataset_files']:
