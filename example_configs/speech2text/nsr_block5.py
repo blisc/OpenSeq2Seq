@@ -146,6 +146,8 @@ base_params = {
         "normalization": "batch_norm",
         "activation_fn": lambda x: tf.minimum(tf.nn.relu(x), 20.0),
         "data_format": "channels_last",
+
+        "enable_rnn": False
     },
 
     "decoder": FullyConnectedCTCDecoder,

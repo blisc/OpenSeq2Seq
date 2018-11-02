@@ -2,11 +2,12 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
-import tensorflow as tf
-
-from .encoder import Encoder
 from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, conv_ln_actv, conv_in_actv, conv_bn_res_bn_actv
+from tensorflow.contrib.cudnn_rnn.python.ops import cudnn_rnn_ops
+from tensorflow.python.framework import ops
 
+import tensorflow as tf
+from .encoder import Encoder
 
 class Wave2LetterEncoder(Encoder):
   """Wave2Letter like encoder. Fully convolutional model"""
@@ -26,6 +27,7 @@ class Wave2LetterEncoder(Encoder):
         'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm'],
         'bn_momentum': float,
         'bn_epsilon': float,
+        'enable_rnn': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -64,7 +66,7 @@ class Wave2LetterEncoder(Encoder):
     * **data_format** (string) --- could be either "channels_first" or
       "channels_last". Defaults to "channels_last".
     * **normalization** --- normalization to use. Accepts [None, 'batch_norm'].
-      Use None if you don't want to use normalization. Defaults to 'batch_norm'.     
+      Use None if you don't want to use normalization. Defaults to 'batch_norm'.
     * **bn_momentum** (float) --- momentum for batch norm. Defaults to 0.90.
     * **bn_epsilon** (float) --- epsilon for batch norm. Defaults to 1e-3.
     """
@@ -190,6 +192,50 @@ class Wave2LetterEncoder(Encoder):
 
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])
+
+    if self.params.get("enable_rnn", False):
+      rnn_input = outputs
+      rnn_vars = []
+      if self._mode == "infer":
+        cell = lambda: tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(
+            256
+        )
+        cells_fw = [cell() for _ in range(1)]
+        cells_bw = [cell() for _ in range(1)]
+        (top_layer, _, _) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
+            cells_fw, cells_bw, rnn_input,
+            sequence_length=src_length,
+            dtype=rnn_input.dtype,
+            time_major=False)
+      else:
+        rnn_input = tf.transpose(top_layer, [1, 0, 2])
+
+        rnn_block = tf.contrib.cudnn_rnn.CudnnLSTM(
+            num_layers=1,
+            num_units=256,
+            direction=cudnn_rnn_ops.CUDNN_RNN_BIDIRECTION,
+            dtype=rnn_input.dtype,
+            name="cudnn_rnn"
+        )
+        rnn_block.build(rnn_input.get_shape())
+        top_layer, _ = rnn_block(rnn_input)
+        top_layer = tf.transpose(top_layer, [1, 0, 2])
+        rnn_vars += rnn_block.trainable_variables
+
+      if regularizer and training:
+        for weights in rnn_vars:
+          if "bias" not in weights.name:
+            # print("Added regularizer to {}".format(weights.name))
+            if weights.dtype.base_dtype == tf.float16:
+              tf.add_to_collection(
+                  'REGULARIZATION_FUNCTIONS', (weights, regularizer)
+              )
+            else:
+              tf.add_to_collection(
+                  ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(weights)
+              )
+
+      outputs = top_layer
 
     return {
         'outputs': outputs,
