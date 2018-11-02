@@ -28,8 +28,7 @@ elif training_set == "combined":
 elif training_set == "syn":
     dataset_files = ["/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
 
-data_aug = {'time_stretch_ratio': 0.05,
-            'noise_level_min': -90,}
+data_aug = {}
 if data_aug_enable == True:
     data_aug = {
             'time_stretch_ratio': 0.05,

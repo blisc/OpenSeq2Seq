@@ -202,13 +202,13 @@ class Wave2LetterEncoder(Encoder):
         )
         cells_fw = [cell() for _ in range(1)]
         cells_bw = [cell() for _ in range(1)]
-        (top_layer, _, _) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
+        (outputs, _, _) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
             cells_fw, cells_bw, rnn_input,
             sequence_length=src_length,
             dtype=rnn_input.dtype,
             time_major=False)
       else:
-        rnn_input = tf.transpose(top_layer, [1, 0, 2])
+        rnn_input = tf.transpose(rnn_input, [1, 0, 2])
 
         rnn_block = tf.contrib.cudnn_rnn.CudnnLSTM(
             num_layers=1,
@@ -218,8 +218,8 @@ class Wave2LetterEncoder(Encoder):
             name="cudnn_rnn"
         )
         rnn_block.build(rnn_input.get_shape())
-        top_layer, _ = rnn_block(rnn_input)
-        top_layer = tf.transpose(top_layer, [1, 0, 2])
+        outputs, _ = rnn_block(rnn_input)
+        outputs = tf.transpose(outputs, [1, 0, 2])
         rnn_vars += rnn_block.trainable_variables
 
       if regularizer and training:
@@ -234,8 +234,6 @@ class Wave2LetterEncoder(Encoder):
               tf.add_to_collection(
                   ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(weights)
               )
-
-      outputs = top_layer
 
     return {
         'outputs': outputs,

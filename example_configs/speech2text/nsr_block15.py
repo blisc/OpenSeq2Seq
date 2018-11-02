@@ -30,7 +30,7 @@ elif training_set == "combined":
 elif training_set == "syn":
     dataset_files = ["/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
 
-data_aug = None
+data_aug = {}
 if data_aug_enable == True:
     data_aug = {
             'time_stretch_ratio': 0.05,
@@ -218,6 +218,8 @@ base_params = {
         "normalization": "batch_norm",
         "activation_fn": lambda x: tf.minimum(tf.nn.relu(x), 20.0),
         "data_format": "channels_last",
+
+        "enable_rnn": False
     },
 
     "decoder": FullyConnectedCTCDecoder,
