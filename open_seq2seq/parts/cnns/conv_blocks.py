@@ -42,8 +42,9 @@ def conv_actv(layer_type, name, inputs, filters, kernel_size, activation_fn, str
     output = activation_fn(output)
   return output
 
-def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters, kernel_size, activation_fn, strides,
-                        padding, regularizer, training, data_format, bn_momentum,
+def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
+                        kernel_size, activation_fn, strides, padding,
+                        regularizer, training, data_format, bn_momentum,
                         bn_epsilon, dilation=1):
   layer = layers_dict[layer_type]
 
@@ -51,11 +52,18 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters, kernel_si
     res_inputs = [res_inputs]
   res_aggregation = 0
   for i, res in enumerate(res_inputs):
+    # For backwards compatibiliaty with earlier models
+    if i == 0:
+      res_name = "{}/res"
+      res_bn_name = "{}/res_bn"
+    else:
+      res_name = "{}/res_{}"
+      res_bn_name = "{}/res_bn_{}"
     res = tf.layers.conv1d(
         res,
         filters,
         1,
-        name="{}/res_{}".format(name, i),
+        name=res_name.format(name, i),
         use_bias=False,
     )
     squeeze = False
@@ -64,7 +72,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters, kernel_si
       res = tf.expand_dims(res, axis=axis)  # NWC --> NHWC
       squeeze = True
     res = tf.layers.batch_normalization(
-        name="{}/res_bn_{}".format(name, i),
+        name=res_bn_name.format(name, i),
         inputs=res,
         gamma_regularizer=regularizer,
         training=training,
