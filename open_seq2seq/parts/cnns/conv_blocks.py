@@ -50,15 +50,15 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
 
   if not isinstance(res_inputs, list):
     res_inputs = [res_inputs]
+    # For backwards compatibiliaty with earlier models
+    res_name = "{}/res"
+    res_bn_name = "{}/res_bn"
+  else:
+    res_name = "{}/res_{}"
+    res_bn_name = "{}/res_bn_{}"
+
   res_aggregation = 0
   for i, res in enumerate(res_inputs):
-    # For backwards compatibiliaty with earlier models
-    if i == 0:
-      res_name = "{}/res"
-      res_bn_name = "{}/res_bn"
-    else:
-      res_name = "{}/res_{}"
-      res_bn_name = "{}/res_bn_{}"
     res = tf.layers.conv1d(
         res,
         filters,
