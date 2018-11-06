@@ -17,13 +17,14 @@ base_model = Text2Speech
 # data_root = "/raid2/MAILABS/en_US/by_book/female/mary_ann/northandsouth/"
 # data_root = "/raid2/MAILABS/en_US/by_book/male/elliot_miller"
 # data_root = "/raid2/MAILABS/en_US/by_book/"
+data_root = "/mnt/hdd/data/MAILABS/en_US/by_book/"
 # data_root = "/raid2/MAILABS/en_UK/by_book/female/elizabeth_klett/jane_eyre/"
 # data_root = "/raid2/MAILABS/"
-data_root = "/data/speech/LJSpeech/"
+# data_root = "/data/speech/LJSpeech/"
 # data_root = "/data/librispeech/"
 
 output_type = "both"
-style_mode = None
+style_mode = "attention"
 
 if style_mode == None:
   style_enable = False
@@ -216,10 +217,10 @@ base_params = {
       "rnn_unidirectional": True,
       "rnn_type": tf.nn.rnn_cell.GRUCell,
       "mode": style_mode,
-      "emb_size": 2048,
-      'attention_layer_size': 2048,
-      "num_tokens": 64,
-      "num_heads": 16
+      "emb_size": 512,
+      'attention_layer_size': 512,
+      "num_tokens": 32,
+      "num_heads": 8
     }
   },
 
