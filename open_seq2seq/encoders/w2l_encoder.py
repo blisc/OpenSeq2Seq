@@ -28,6 +28,8 @@ class Wave2LetterEncoder(Encoder):
         'bn_momentum': float,
         'bn_epsilon': float,
         'enable_rnn': bool,
+        'rnn_cell_size': int,
+        'rnn_layers': int
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -196,12 +198,14 @@ class Wave2LetterEncoder(Encoder):
     if self.params.get("enable_rnn", False):
       rnn_input = outputs
       rnn_vars = []
+      cell_size = self.params.get("rnn_cell_size", 256)
+      num_layers = self.params.get("rnn_layers", 1)
       if self._mode == "infer":
         cell = lambda: tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(
-            256
+            cell_size
         )
-        cells_fw = [cell() for _ in range(1)]
-        cells_bw = [cell() for _ in range(1)]
+        cells_fw = [cell() for _ in range(num_layers)]
+        cells_bw = [cell() for _ in range(num_layers)]
         (outputs, _, _) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
             cells_fw, cells_bw, rnn_input,
             sequence_length=src_length,
@@ -211,8 +215,8 @@ class Wave2LetterEncoder(Encoder):
         rnn_input = tf.transpose(rnn_input, [1, 0, 2])
 
         rnn_block = tf.contrib.cudnn_rnn.CudnnLSTM(
-            num_layers=1,
-            num_units=256,
+            num_layers=num_layers,
+            num_units=cell_size,
             direction=cudnn_rnn_ops.CUDNN_RNN_BIDIRECTION,
             dtype=rnn_input.dtype,
             name="cudnn_rnn"
