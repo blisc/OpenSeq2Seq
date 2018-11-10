@@ -1,7 +1,6 @@
 # Copyright (c) 2018 NVIDIA Corporation
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
-from six.moves import range
 
 import numpy as np
 import librosa
@@ -109,10 +108,11 @@ def get_speech_features(
   else:
     num_features_mel = num_features_mag = num_features
 
-  complex_spec = librosa.stft(y=signal, n_fft=n_fft)
-  mag, _ = librosa.magphase(complex_spec, power=mag_power)
+  complex_spec = librosa.stft(y=signal, n_fft=n_fft, hop_length=hop_length)
+  mag, phase = librosa.magphase(complex_spec, power=mag_power)
 
-  if features_type == 'magnitude' or features_type == "both":
+  if (features_type == 'magnitude' or features_type == "both"
+      or features_type == "tri"):
     features = np.log(np.clip(mag, a_min=data_min_mag, a_max=None)).T
     assert num_features_mag <= n_fft // 2 + 1, \
         "num_features for spectrogram should be <= (fs * window_size // 2 + 1)"
@@ -120,8 +120,9 @@ def get_speech_features(
     # cut high frequency part
     features = features[:, :num_features_mag]
 
-  if 'mel' in features_type or features_type == "both":
-    if features_type == "both":
+  if ('mel' in features_type or features_type == "both"
+      or features_type == "tri"):
+    if features_type == "both" or features_type == "tri":
       mag_features = features
     if mel_basis is None:
       htk = True
@@ -155,8 +156,10 @@ def get_speech_features(
 
   if features_type == "both":
     return [features, mag_features]
-
-  return features
+  elif "tri" in features_type:
+    return [features, mag_features, np.angle(phase).T]
+  else:
+    return features
 
 
 def get_mel(

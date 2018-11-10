@@ -17,14 +17,14 @@ base_model = Text2Speech
 # data_root = "/raid2/MAILABS/en_US/by_book/female/mary_ann/northandsouth/"
 # data_root = "/raid2/MAILABS/en_US/by_book/male/elliot_miller"
 # data_root = "/raid2/MAILABS/en_US/by_book/"
-data_root = "/mnt/hdd/data/MAILABS/en_US/by_book/"
-# data_root = "/raid2/MAILABS/en_UK/by_book/female/elizabeth_klett/jane_eyre/"
+# data_root = "/mnt/hdd/data/MAILABS/en_US/by_book/"
+data_root = "/mnt/hdd/data/MAILABS/en_UK/by_book/female/elizabeth_klett/jane_eyre/"
 # data_root = "/raid2/MAILABS/"
 # data_root = "/data/speech/LJSpeech/"
 # data_root = "/data/librispeech/"
 
-output_type = "both"
-style_mode = "attention"
+output_type = "tri"
+style_mode = None
 
 if style_mode == None:
   style_enable = False
@@ -77,7 +77,7 @@ elif output_type == "mel":
   num_audio_features = 80
   data_min = 1e-2
   output_type = "mel_disk"
-elif output_type == "both":
+elif output_type == "both" or "tri" in output_type:
   num_audio_features = {
       "mel": 80,
       "magnitude": mag_num_feats
@@ -86,7 +86,8 @@ elif output_type == "both":
       "mel": 1e-2,
       "magnitude": 1e-5,
   }
-  output_type = "both_disk"
+  if "tri" not in output_type:
+    output_type = "both_disk"
   exp_mag = True
 else:
   raise ValueError("Unknown param for output_type")
@@ -319,7 +320,7 @@ train_params = {
       os.path.join(data_root, train),
     ],
     "shuffle": True,
-    "style_input": "wav",
+    "style_input": style_in,
   },
 }
 
@@ -331,7 +332,7 @@ eval_params = {
     "duration_max":10000,
     "duration_min":0,
     "shuffle": False,
-    "style_input": "wav",
+    "style_input": style_in,
   },
 }
 

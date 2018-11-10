@@ -29,7 +29,7 @@ class Text2SpeechDataLayer(DataLayer):
         DataLayer.get_required_params(), **{
             'dataset': ['LJ', 'Librispeech', 'MAILABS-16'],
             'num_audio_features': None,
-            'output_type': ['magnitude', 'mel', 'both', 'magnitude_disk', 'mel_disk', 'both_disk'],
+            'output_type': ['magnitude', 'mel', 'both', 'magnitude_disk', 'mel_disk', 'both_disk', 'tri'],
             'vocab_file': str,
             'dataset_files': list,
             'feature_normalize': bool,
@@ -159,7 +159,7 @@ class Text2SpeechDataLayer(DataLayer):
       self._load_from_disk = False
     
     n_feats = self.params['num_audio_features']
-    if "both" in self.params["output_type"]:
+    if "both" in self.params["output_type"] or "tri" in self.params["output_type"]:
       self._both = True
       if self.params["feature_normalize"]:
         raise ValueError(
@@ -294,6 +294,8 @@ class Text2SpeechDataLayer(DataLayer):
     if self._both:
       num_audio_features = self.params['num_audio_features']['mel'] 
       num_audio_features += self.params['num_audio_features']['magnitude']
+      if "tri" in self.params["output_type"]:
+        num_audio_features += self.params['num_audio_features']['magnitude']
     else:
       num_audio_features = self.params['num_audio_features']
 
@@ -553,7 +555,10 @@ class Text2SpeechDataLayer(DataLayer):
           data_min=self.params.get("data_min", 1e-5)
       )
       if self._both:
-        mel_spectrogram, spectrogram = spectrogram
+        if "tri" in features_type:
+          mel_spectrogram, spectrogram, phase = spectrogram
+        else:
+          mel_spectrogram, spectrogram = spectrogram
         if self._exp_mag:
           spectrogram = np.exp(spectrogram)
     stop_token_target = np.zeros(
@@ -594,7 +599,17 @@ class Text2SpeechDataLayer(DataLayer):
             "constant",
             constant_values=pad_value_mag
         )
-        spectrogram = np.concatenate((mel_spectrogram, spectrogram), axis=1)
+        if "tri" in features_type:
+          phase = np.pad(
+            phase,
+            # ((8, num_pad), (0, 0)),
+            ((0, num_pad), (0, 0)),
+            "constant",
+            constant_values=0.
+          )
+          spectrogram = np.concatenate((mel_spectrogram, spectrogram, phase), axis=1)
+        else:
+          spectrogram = np.concatenate((mel_spectrogram, spectrogram), axis=1)
       else:
         spectrogram = np.pad(
             spectrogram,
