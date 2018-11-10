@@ -74,8 +74,8 @@ class TacotronLoss(Loss):
       mag_pred = input_dict['decoder_output']['outputs'][5]
       mag_pred = tf.cast(mag_pred, dtype=tf.float32)
       if "tri" in self._model.get_data_layer().params['output_type']:
-        phase_pred = input_dict['decoder_output']['outputs'][6]
-        phase_pred = tf.cast(phase_pred, dtype=tf.float32)
+        tri_pred = input_dict['decoder_output']['outputs'][6]
+        tri_pred = tf.cast(tri_pred, dtype=tf.float32)
     spec = input_dict['target_tensors'][0]
     stop_token = input_dict['target_tensors'][1]
     stop_token = tf.expand_dims(stop_token, -1)
@@ -134,20 +134,24 @@ class TacotronLoss(Loss):
       )
 
       if self._tri:
-        phase_pad = tf.zeros(
+        tri_pad = tf.zeros(
             [
                 batch_size,
                 max_length - tf.shape(mag_pred)[1],
-                tf.shape(mag_pred)[2]
+                tf.shape(tri_pred)[2]
             ]
         )
-        phase_pred = tf.concat(
-           [phase_pred, phase_pad], axis=1
+        tri_pred = tf.concat(
+           [tri_pred, tri_pad], axis=1
         )
 
-        spec, mag_target, phase_target = tf.split(
+        num_tri_feats = self._n_feats['magnitude']
+        if self._model.get_data_layer().params['output_type'] == "tri_ri":
+          num_tri_feats += self._n_feats['magnitude']
+
+        spec, mag_target, tri_target = tf.split(
             spec,
-            [self._n_feats['mel'], self._n_feats['magnitude'], self._n_feats['magnitude']],
+            [self._n_feats['mel'], self._n_feats['magnitude'], num_tri_feats],
             axis=2
         )
       else:
@@ -176,8 +180,8 @@ class TacotronLoss(Loss):
             labels=mag_target, predictions=mag_pred, weights=mask
         )
         if self._tri:
-          phase_loss = tf.losses.mean_squared_error(
-              labels=phase_target, predictions=phase_pred, weights=mask
+          tri_loss = tf.losses.mean_squared_error(
+              labels=tri_target, predictions=tri_pred, weights=mask
           )
       stop_token_loss = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=stop_token, logits=stop_token_predictions
@@ -206,7 +210,7 @@ class TacotronLoss(Loss):
     if self._both:
       loss += mag_loss
       if self._tri:
-        loss += phase_loss
+        loss += tri_loss
 
     if self.params.get("add_kl", False):
       mean = input_dict['decoder_output']['mean']

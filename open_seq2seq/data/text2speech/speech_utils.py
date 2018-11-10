@@ -112,7 +112,7 @@ def get_speech_features(
   mag, phase = librosa.magphase(complex_spec, power=mag_power)
 
   if (features_type == 'magnitude' or features_type == "both"
-      or features_type == "tri"):
+      or "tri" in features_type):
     features = np.log(np.clip(mag, a_min=data_min_mag, a_max=None)).T
     assert num_features_mag <= n_fft // 2 + 1, \
         "num_features for spectrogram should be <= (fs * window_size // 2 + 1)"
@@ -121,8 +121,8 @@ def get_speech_features(
     features = features[:, :num_features_mag]
 
   if ('mel' in features_type or features_type == "both"
-      or features_type == "tri"):
-    if features_type == "both" or features_type == "tri":
+      or "tri" in features_type):
+    if features_type == "both" or "tri" in features_type:
       mag_features = features
     if mel_basis is None:
       htk = True
@@ -156,8 +156,13 @@ def get_speech_features(
 
   if features_type == "both":
     return [features, mag_features]
-  elif "tri" in features_type:
+  elif features_type == "tri_phase":
     return [features, mag_features, np.angle(phase).T]
+  elif features_type == "tri_ri":
+    real = np.real(complex_spec).T
+    imag = np.imag(complex_spec).T
+    ri_feat = np.concatenate((real, imag), axis=1)
+    return [features, mag_features, ri_feat]
   else:
     return features
 

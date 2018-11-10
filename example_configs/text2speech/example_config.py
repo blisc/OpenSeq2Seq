@@ -23,7 +23,7 @@ data_root = replace
 # data_root = "/data/speech/LJSpeech/"
 # data_root = "/data/librispeech/"
 
-output_type = "tri"
+output_type = "tri_ri"
 style_mode = None
 
 if style_mode == None:

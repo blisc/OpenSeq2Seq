@@ -171,11 +171,9 @@ def save_phase_audio(
     logdir,
     step,
     sampling_rate,
-    n_fft=1024,
     mode="train",
     number=0,
     save_format="tensorboard",
-    power=1.5
 ):
 
   if np.min(magnitudes) < 0 or np.max(magnitudes) > 255:
@@ -183,6 +181,40 @@ def save_phase_audio(
     magnitudes = np.clip(magnitudes, a_min=0, a_max=255)
   phase = np.exp(1j * np.pi * phase)
   signal = librosa.istft(magnitudes * phase)
+  if save_format == "np.array":
+    return signal
+  elif save_format == "tensorboard":
+    tag = "{}_audio".format(mode)
+    iostream = BytesIO()
+    write(iostream, sampling_rate, signal)
+    summary = tf.Summary.Audio(encoded_audio_string=iostream.getvalue())
+    summary = tf.Summary.Value(tag=tag, audio=summary)
+    return summary
+  elif save_format == "disk":
+    file_name = '{}/sample_step{}_{}_{}.wav'.format(logdir, step, number, mode)
+    if logdir[0] != '/':
+      file_name = "./" + file_name
+    write(file_name, sampling_rate, signal)
+    return None
+  else:
+    print((
+        "WARN: The save format passed to save_audio was not understood. No "
+        "sound files will be saved for the current step. "
+        "Received '{}'."
+        "Expected one of 'np.array', 'tensorboard', or 'disk'"
+    ).format(save_format))
+
+def save_ri_audio(
+    real,
+    imag,
+    logdir,
+    step,
+    sampling_rate,
+    mode="train",
+    number=0,
+    save_format="tensorboard",
+):
+  signal = librosa.istft(real + imag*1j)
   if save_format == "np.array":
     return signal
   elif save_format == "tensorboard":
@@ -341,17 +373,29 @@ class Text2Speech(EncoderDecoderModel):
       )
       dict_to_log['audio_mag'] = wav_summary
       if "tri" in self.get_data_layer().params['output_type']:
-        predicted_phase = output_values[6][0][:audio_length - 1, :]
-        wav_summary = save_phase_audio(
-            predicted_phase,
-            predicted_mag_spec,
-            self.params["logdir"],
-            step,
-            n_fft=self.get_data_layer().n_fft,
-            sampling_rate=self.get_data_layer().sampling_rate,
-            mode="train_complex",
-            save_format=save_format,
-        )
+        if self.get_data_layer().params['output_type'] == "tri_phase":
+          predicted_phase = output_values[6][0][:audio_length - 1, :]
+          wav_summary = save_phase_audio(
+              predicted_phase,
+              predicted_mag_spec,
+              self.params["logdir"],
+              step,
+              sampling_rate=self.get_data_layer().sampling_rate,
+              mode="train_complex",
+              save_format=save_format,
+          )
+        else:
+          predicted_ri = output_values[6][0][:audio_length - 1, :]
+          real, imag = np.split(predicted_ri, [n_feats["magnitude"]], axis=1)
+          wav_summary = save_ri_audio(
+              real,
+              imag,
+              self.params["logdir"],
+              step,
+              sampling_rate=self.get_data_layer().sampling_rate,
+              mode="train_complex",
+              save_format=save_format,
+          )
         dict_to_log['audio_complex'] = wav_summary
     predicted_final_spec = predicted_final_spec[:audio_length - 1, :]
     predicted_final_spec = self.get_data_layer().get_magnitude_spec(

@@ -355,9 +355,12 @@ class Tacotron2Decoder(Decoder):
       num_audio_features = self._n_feats["mel"]
       if self._mode == "train":
         if "tri" in self._model.get_data_layer().params['output_type']:
+          feats = self._n_feats['magnitude']
+          if self._model.get_data_layer().params['output_type'] == "tri_ri":
+            feats += self._n_feats['magnitude']
           spec, _, _ = tf.split(
               spec,
-              [self._n_feats['mel'], self._n_feats['magnitude'], self._n_feats['magnitude']],
+              [self._n_feats['mel'], self._n_feats['magnitude'], feats],
               axis=2
           )
         else:
@@ -691,11 +694,11 @@ class Tacotron2Decoder(Decoder):
           # kernel_regularizer=regularizer
       )
       if "tri" in self._model.get_data_layer().params['output_type']:
-        phase_prediction = tf.log(tf.clip_by_value (mag_spec_prediction, 1e-5, 512))
-        phase_prediction = conv_bn_actv(
+        tri_prediction = tf.log(tf.clip_by_value (mag_spec_prediction, 1e-5, 512))
+        tri_prediction = conv_bn_actv(
             layer_type="conv1d",
             name="phase_conv_0",
-            inputs=phase_prediction,
+            inputs=tri_prediction,
             filters=256,
             kernel_size=4,
             activation_fn=tf.nn.relu,
@@ -707,10 +710,10 @@ class Tacotron2Decoder(Decoder):
             bn_momentum=self.params.get('postnet_bn_momentum', 0.1),
             bn_epsilon=self.params.get('postnet_bn_epsilon', 1e-5),
         )
-        phase_prediction = conv_bn_actv(
+        tri_prediction = conv_bn_actv(
             layer_type="conv1d",
             name="phase_conv_1",
-            inputs=phase_prediction,
+            inputs=tri_prediction,
             filters=512,
             kernel_size=4,
             activation_fn=tf.nn.relu,
@@ -722,18 +725,28 @@ class Tacotron2Decoder(Decoder):
             bn_momentum=self.params.get('postnet_bn_momentum', 0.1),
             bn_epsilon=self.params.get('postnet_bn_epsilon', 1e-5),
         )
-        phase_prediction = tf.layers.conv1d(
-            phase_prediction,
-            self._n_feats["magnitude"],
-            1,
-            name="phase_proj",
-            use_bias=False,
-            # kernel_regularizer=regularizer
-        )
-        phase_prediction = tf.nn.tanh(phase_prediction) * tf.constant(np.pi)
+        if self._model.get_data_layer().params['output_type'] == "tri_phase":
+          phase_prediction = tf.layers.conv1d(
+              tri_prediction,
+              self._n_feats["magnitude"],
+              1,
+              name="phase_proj",
+              use_bias=False,
+              # kernel_regularizer=regularizer
+          )
+          phase_prediction = tf.nn.tanh(phase_prediction) * tf.constant(np.pi)
+        else:
+          ri_prediction = tf.layers.conv1d(
+              tri_prediction,
+              self._n_feats["magnitude"]+self._n_feats["magnitude"],
+              1,
+              name="phase_proj",
+              use_bias=False,
+              # kernel_regularizer=regularizer
+          )
     else:
       mag_spec_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
-      phase_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
+      ri_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
 
     with tf.variable_scope("decoder"):
       if self.params.get("stop_token_choice", 1) == 3:
@@ -752,7 +765,7 @@ class Tacotron2Decoder(Decoder):
     outputs = [
         decoder_output, spectrogram_prediction, alignments,
         stop_token_prediction, sequence_lengths, mag_spec_prediction,
-        phase_prediction
+        ri_prediction
     ]
 
     return {
