@@ -12,7 +12,7 @@ residual_dense = True
 repeat_1 = 3
 repeat_2 = 3
 dropout_factor = 1.
-training_set = "libri"
+training_set = "combined"
 data_aug_enable = False
 
 if training_set == "libri":
