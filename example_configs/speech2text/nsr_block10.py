@@ -214,6 +214,7 @@ base_params = {
         "lm_path": "language_model/4-gram.binary",
         "trie_path": "language_model/trie.binary",
         "alphabet_config_path": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
+        "temperature": 1.,
     },
     "loss": CTCLoss,
     "loss_params": {},

@@ -177,6 +177,7 @@ class FullyConnectedCTCDecoder(FullyConnectedTimeDecoder):
         'lm_path': str,
         'trie_path': str,
         'alphabet_config_path': str,
+        'temperature': float,
     })
 
   def __init__(self, params, model,
@@ -219,6 +220,7 @@ class FullyConnectedCTCDecoder(FullyConnectedTimeDecoder):
         sequence_length = decoder_input['encoder_output']['src_length']
         if logits.dtype.base_dtype != tf.float32:
           logits = tf.cast(logits, tf.float32)
+        logits = tf.div(logits, self.params.get("temperature", 1.))
         decoded_ixs, decoded_vals, decoded_shapes, log_probabilities = (
             custom_op_module.ctc_beam_search_decoder_with_lm(
                 logits, sequence_length, beam_width=beam_width,
