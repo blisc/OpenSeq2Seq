@@ -86,8 +86,6 @@ elif output_type == "both" or "tri" in output_type:
       "mel": 1e-2,
       "magnitude": 1e-5,
   }
-  if "tri" not in output_type:
-    output_type = "both_disk"
   exp_mag = True
 else:
   raise ValueError("Unknown param for output_type")
