@@ -524,9 +524,12 @@ class Text2SpeechDataLayer(DataLayer):
     else:
       if self.params.get('dataset_location', None) is not None:
         if "wavs" in audio_filename:
-          file_path = os.path.join(
-              self.params['dataset_location'], audio_filename + ".wav"
-          )
+          if self.params['dataset'] == 'MAILABS-16':
+            file_path = audio_filename
+          else:
+            file_path = os.path.join(
+                self.params['dataset_location'], audio_filename + ".wav"
+            )
         else:
           file_path = os.path.join(
               self.params['dataset_location'], "wavs", audio_filename + ".wav"
