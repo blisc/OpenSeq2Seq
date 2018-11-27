@@ -744,6 +744,8 @@ class Tacotron2Decoder(Decoder):
               use_bias=False,
               # kernel_regularizer=regularizer
           )
+      else:
+        ri_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
     else:
       mag_spec_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
       ri_prediction = tf.zeros([_batch_size, _batch_size, _batch_size])
