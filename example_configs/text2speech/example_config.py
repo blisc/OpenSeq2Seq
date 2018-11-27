@@ -37,7 +37,7 @@ elif style_mode == "vae":
 elif style_mode == "attention":
   style_enable = True
   add_kl = False
-  style_in = "token"
+  style_in = "wav"
 else:
   raise ValueError("Unknown style mode")
 
@@ -46,8 +46,8 @@ if "MAILABS" in data_root:
   dataset = "MAILABS-16"
   mag_num_feats = 401
   dataset_location = data_root
-  train = "train.csv"
-  val = "val.csv"
+  train = "train_1.csv"
+  val = "val_1.csv"
   batch_size = 32
 elif "LJSpeech" in data_root:
   trim = False
