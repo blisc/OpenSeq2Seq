@@ -549,7 +549,7 @@ class Tacotron2Encoder(Encoder):
               maxval=1.,
               dtype=self.params["dtype"]
           ),
-          trainable=False
+          trainable=params.get("embed_trainable", False)
       )
 
       attention = attention_layer.Attention(

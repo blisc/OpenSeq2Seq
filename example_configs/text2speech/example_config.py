@@ -23,8 +23,8 @@ data_root = replace
 # data_root = "/data/speech/LJSpeech/"
 # data_root = "/data/librispeech/"
 
-output_type = "tri_ri"
-style_mode = None
+output_type = "both"
+style_mode = "attention"
 
 if style_mode == None:
   style_enable = False
@@ -221,7 +221,8 @@ base_params = {
       "emb_size": 512,
       'attention_layer_size': 512,
       "num_tokens": 32,
-      "num_heads": 8
+      "num_heads": 8,
+      "embed_trainable": True
     }
   },
 
