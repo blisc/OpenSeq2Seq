@@ -117,11 +117,12 @@ class Speech2Text(EncoderDecoderModel):
     return super(Speech2Text, self)._create_decoder()
 
   def _create_loss(self):
-    self.params['loss_params'][
-        'batch_size'] = self.params['batch_size_per_gpu']
-    self.params['loss_params']['tgt_vocab_size'] = (
-        self.get_data_layer().params['tgt_vocab_size']
-    )
+    if self.autoregressive or self.get_data_layer().params.get("jointctcrnn", False):
+      self.params['loss_params'][
+          'batch_size'] = self.params['batch_size_per_gpu']
+      self.params['loss_params']['tgt_vocab_size'] = (
+          self.get_data_layer().params['tgt_vocab_size']
+      )
     return super(Speech2Text, self)._create_loss()
 
   def maybe_print_logs(self, input_values, output_values, training_step):
