@@ -99,10 +99,12 @@ class Speech2TextDataLayer(DataLayer):
         self.end_index = num_chars_orig
         self.blank_index = num_chars_orig + 1
         self.params['char2idx']['</S>'] = self.end_index
+        self.params['char2idx']['<b>'] = self.blank_index
       # Default mode for ctc
       else:
         # add one for implied blank token
         self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 1
+        # self.params['char2idx']['<b>'] = len(self.params['char2idx'])
       self.params['idx2char'] = {i: w for w,
                                  i in self.params['char2idx'].items()}
     self.target_pad_value = 0
