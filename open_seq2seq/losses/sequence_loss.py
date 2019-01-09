@@ -24,6 +24,7 @@ class BasicSequenceLoss(Loss):
         'offset_target_by_one': bool,
         'average_across_timestep': bool,
         'do_mask': bool,
+        'reduce_tgt_size_by_one': bool,
     })
 
   def __init__(self, params, model, name="basic_sequence_loss"):
@@ -44,6 +45,8 @@ class BasicSequenceLoss(Loss):
     """
     super(BasicSequenceLoss, self).__init__(params, model, name)
     self._tgt_vocab_size = self.params["tgt_vocab_size"]
+    if self.params.get("reduce_tgt_size_by_one", False):
+      self._tgt_vocab_size -= 1
     self._batch_size = self.params["batch_size"]
     self._offset_target_by_one = self.params.get("offset_target_by_one", True)
     self._average_across_timestep = self.params.get("average_across_timestep",

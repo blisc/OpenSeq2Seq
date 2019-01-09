@@ -10,11 +10,11 @@ from open_seq2seq.losses import MultiTaskCTCEntropyLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 residual = True
-residual_dense = False
-repeat_1 = 4
-repeat_2 = 4
+residual_dense = True
+repeat_1 = 3
+repeat_2 = 3
 dropout_factor = 1.
-training_set = "libri"
+training_set = "combined"
 data_aug_enable = False
 
 if training_set == "libri":
@@ -236,7 +236,8 @@ base_params = {
         "seq_loss_params": {
             "offset_target_by_one": False,
             "average_across_timestep": True,
-            "do_mask": True
+            "do_mask": True,
+            "reduce_tgt_size_by_one": True
         },
 
         "ctc_loss_params": {
