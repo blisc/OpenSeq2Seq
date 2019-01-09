@@ -36,6 +36,7 @@ class Speech2TextDataLayer(DataLayer):
         'max_duration': float,
         'bpe': bool,
         'autoregressive': bool,
+        'jointctcrnn': bool,
         'syn_enable': bool,
         'syn_subdirs': list,
         'window_size': float,
@@ -81,10 +82,8 @@ class Speech2TextDataLayer(DataLayer):
       self.params['char2idx'] = load_pre_existing_vocabulary(
           self.params['vocab_file'], read_chars=True,
       )
-      if not self.autoregressive:
-        # add one for implied blank token
-        self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 1
-      else:
+      # Mode for joint ctc and attention
+      if self.autoregressive:
         num_chars_orig = len(self.params['char2idx'])
         self.params['tgt_vocab_size'] = num_chars_orig + 2
         self.start_index = num_chars_orig
@@ -92,6 +91,18 @@ class Speech2TextDataLayer(DataLayer):
         self.params['char2idx']['<S>'] = self.start_index
         self.params['char2idx']['</S>'] = self.end_index
         self.target_pad_value = self.end_index
+      # Mode for joint ctc and rnn xentropy
+      elif self.params.get("jointctcrnn", False):
+        num_chars_orig = len(self.params['char2idx'])
+        # Add two for blank ctc token, and end of sentence token
+        self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 2
+        self.end_index = num_chars_orig
+        self.blank_index = num_chars_orig + 1
+        self.params['char2idx']['</S>'] = self.end_index
+      # Default mode for ctc
+      else:
+        # add one for implied blank token
+        self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 1
       self.params['idx2char'] = {i: w for w,
                                  i in self.params['char2idx'].items()}
     self.target_pad_value = 0
@@ -319,7 +330,7 @@ class Speech2TextDataLayer(DataLayer):
       target_indices = self.sp.EncodeAsIds(transcript)
     else:
       target_indices = [self.params['char2idx'][c] for c in transcript]
-    if self.autoregressive:
+    if self.autoregressive or self.params.get("jointctcrnn", False):
       target_indices = target_indices + [self.end_index]
     target = np.array(target_indices)
 

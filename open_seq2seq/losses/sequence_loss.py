@@ -89,6 +89,15 @@ class BasicSequenceLoss(Loss):
           tf.shape(logits)[1],
       ))
 
+      logits = tf.slice(
+          logits,
+          begin=[0, 0, 0],
+          size=[-1, current_ts, -1],
+      )
+      target_sequence = tf.slice(target_sequence,
+                                 begin=[0, 0],
+                                 size=[-1, current_ts])
+
     # Cast logits after potential slice
     if logits.dtype.base_dtype != tf.float32:
       logits = tf.cast(logits, tf.float32)

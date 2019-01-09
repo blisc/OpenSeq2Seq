@@ -6,9 +6,11 @@ from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
 import copy
+import inspect
 
 import tensorflow as tf
 
+from tensorflow.contrib.cudnn_rnn.python.ops import cudnn_rnn_ops
 from open_seq2seq.parts.rnns.attention_wrapper import BahdanauAttention, \
                                                       LuongAttention, \
                                                       AttentionWrapper
@@ -17,6 +19,204 @@ from open_seq2seq.parts.rnns.gnmt import GNMTAttentionMultiCell, \
 from open_seq2seq.parts.rnns.rnn_beam_search_decoder import BeamSearchDecoder
 from open_seq2seq.parts.rnns.utils import single_cell
 from .decoder import Decoder
+
+class RNNDecoder(Decoder):
+  """Typical RNN decoder with attention mechanism.
+  """
+  @staticmethod
+  def get_required_params():
+    return dict(Decoder.get_required_params(), **{
+        'tgt_vocab_size': int,
+        'num_rnn_layers': int,
+        'rnn_cell_dim': int,
+        'rnn_type': None,
+        'use_cudnn_rnn': bool,
+        'rnn_unidirectional': bool,
+    })
+
+  @staticmethod
+  def get_optional_params():
+    return dict(Decoder.get_optional_params(), **{
+        'regularizer': None,
+    })
+
+  def __init__(self, params, model,
+               name='rnn_decoder', mode='train'):
+    """Initializes RNN decoder with embedding.
+
+    See parent class for arguments description.
+
+    Config parameters:
+
+    * **batch_size** (int) --- batch size.
+    * **GO_SYMBOL** (int) --- GO symbol id, must be the same as used in
+      data layer.
+    * **END_SYMBOL** (int) --- END symbol id, must be the same as used in
+      data layer.
+    * **tgt_emb_size** (int) --- embedding size to use.
+    * **core_cell_params** (dict) - parameters for RNN class
+    * **core_cell** (string) - RNN class.
+    * **decoder_dp_input_keep_prob** (float) - dropout input keep probability.
+    * **decoder_dp_output_keep_prob** (float) - dropout output keep probability.
+    * **decoder_use_skip_connections** (bool) - use residual connections or not.
+    * **attention_type** (string) - bahdanau, luong, gnmt or gnmt_v2.
+    * **bahdanau_normalize** (bool, optional) - whether to use normalization in
+      bahdanau attention.
+    * **luong_scale** (bool, optional) - whether to use scale in luong attention
+    * ... add any cell-specific parameters here as well.
+    """
+    super(RNNDecoder, self).__init__(params, model, name, mode)
+
+  # @staticmethod
+  # def _add_residual_wrapper(cells, start_ind=1):
+  #   for idx, cell in enumerate(cells):
+  #     if idx >= start_ind:
+  #       cells[idx] = tf.contrib.rnn.ResidualWrapper(  # pylint: disable=no-member
+  #           cell,
+  #           residual_fn=gnmt_residual_fn,
+  #       )
+  #   return cells
+
+  def _decode(self, input_dict):
+    """Decodes representation into data.
+
+    Args:
+      input_dict (dict): Python dictionary with inputs to decoder.
+
+
+    Config parameters:
+
+    * **src_inputs** --- Decoder input Tensor of shape [batch_size, time, dim]
+      or [time, batch_size, dim]
+    * **src_lengths** --- Decoder input lengths Tensor of shape [batch_size]
+    * **tgt_inputs** --- Only during training. labels Tensor of the
+      shape [batch_size, time] or [time, batch_size].
+    * **tgt_lengths** --- Only during training. labels lengths
+      Tensor of the shape [batch_size].
+
+    Returns:
+      dict: Python dictionary with:
+      * final_outputs - tensor of shape [batch_size, time, dim]
+                        or [time, batch_size, dim]
+      * final_state - tensor with decoder final state
+      * final_sequence_lengths - tensor of shape [batch_size, time]
+                                 or [time, batch_size]
+    """
+    encoder_outputs = input_dict['encoder_output']['outputs']
+    regularizer = self.params.get('regularizer', None)
+
+    self._output_projection_layer = tf.layers.Dense(
+        self.params['tgt_vocab_size'], use_bias=False,
+    )
+
+    num_rnn_layers = self.params['num_rnn_layers']
+    cell_params = {}
+    cell_params["num_units"] = self.params['rnn_cell_dim']
+    rnn_type = self.params['rnn_type']
+    rnn_input = encoder_outputs
+    rnn_vars = []
+
+    if self.params["use_cudnn_rnn"]:
+      if self._mode == "infer":
+        cell = lambda: tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(
+            cell_params["num_units"]
+        )
+        cells_fw = [cell() for _ in range(1)]
+        cells_bw = [cell() for _ in range(1)]
+        (top_layer, _, _) = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(
+            cells_fw, cells_bw, rnn_input,
+            sequence_length=text_len,
+            dtype=rnn_input.dtype,
+            time_major=False)
+      else:
+        all_cudnn_classes = [
+            i[1]
+            for i in inspect.getmembers(tf.contrib.cudnn_rnn, inspect.isclass)
+        ]
+        if not rnn_type in all_cudnn_classes:
+          raise TypeError("rnn_type must be a Cudnn RNN class")
+
+        rnn_input = tf.transpose(rnn_input, [1, 0, 2])
+        if self.params['rnn_unidirectional']:
+          direction = cudnn_rnn_ops.CUDNN_RNN_UNIDIRECTION
+        else:
+          direction = cudnn_rnn_ops.CUDNN_RNN_BIDIRECTION
+
+        rnn_block = rnn_type(
+            num_layers=num_rnn_layers,
+            num_units=cell_params["num_units"],
+            direction=direction,
+            dtype=rnn_input.dtype,
+            name="cudnn_rnn"
+        )
+        rnn_block.build(rnn_input.get_shape())
+        top_layer, _ = rnn_block(rnn_input)
+        top_layer = tf.transpose(top_layer, [1, 0, 2])
+        rnn_vars += rnn_block.trainable_variables
+
+    else:
+      multirnn_cell_fw = tf.nn.rnn_cell.MultiRNNCell(
+          [
+              single_cell(
+                  cell_class=rnn_type,
+                  cell_params=cell_params,
+                  training=(self._mode == "train"),
+                  residual_connections=False
+              ) for _ in range(num_rnn_layers)
+          ]
+      )
+      rnn_vars += multirnn_cell_fw.trainable_variables
+      if self.params['rnn_unidirectional']:
+        top_layer, _ = tf.nn.dynamic_rnn(
+            cell=multirnn_cell_fw,
+            inputs=rnn_input,
+            sequence_length=text_len,
+            dtype=rnn_input.dtype,
+            time_major=False,
+        )
+      else:
+        multirnn_cell_bw = tf.nn.rnn_cell.MultiRNNCell(
+            [
+                single_cell(
+                    cell_class=rnn_type,
+                    cell_params=cell_params,
+                    training=(self._mode == "train"),
+                    residual_connections=False
+                ) for _ in range(num_rnn_layers)
+            ]
+        )
+        top_layer, _ = tf.nn.bidirectional_dynamic_rnn(
+            cell_fw=multirnn_cell_fw,
+            cell_bw=multirnn_cell_bw,
+            inputs=rnn_input,
+            sequence_length=text_len,
+            dtype=rnn_input.dtype,
+            time_major=False
+        )
+        # concat 2 tensors [B, T, n_cell_dim] --> [B, T, 2*n_cell_dim]
+        top_layer = tf.concat(top_layer, 2)
+        rnn_vars += multirnn_cell_bw.trainable_variables
+
+    if regularizer and (self._mode == "train"):
+      cell_weights = []
+      cell_weights += rnn_vars
+      for weights in cell_weights:
+        if "bias" not in weights.name:
+          # print("Added regularizer to {}".format(weights.name))
+          if weights.dtype.base_dtype == tf.float16:
+            tf.add_to_collection(
+                'REGULARIZATION_FUNCTIONS', (weights, regularizer)
+            )
+          else:
+            tf.add_to_collection(
+                ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(weights)
+            )
+
+    top_layer = self._output_projection_layer(top_layer)
+    return {'logits': top_layer,
+            # 'outputs': [top_layer]
+            'outputs': [tf.argmax(top_layer, axis=-1)]
+           }
 
 
 class RNNDecoderWithAttention(Decoder):

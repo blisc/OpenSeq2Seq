@@ -27,16 +27,15 @@ def sparse_tensor_to_chars_bpe(tensor):
   idx = [[] for _ in range(tensor.dense_shape[0])]
   for idx_tuple, value in zip(tensor.indices, tensor.values):
     idx[idx_tuple[0]].append(int(value))
-  
   return idx
 
 
-def dense_tensor_to_chars(tensor, idx2char, startindex, endindex):
+def dense_tensor_to_chars(tensor, idx2char, endindex):
   batch_size = len(tensor)
   text = [''] * batch_size
   for batch_num in range(batch_size):
-    '''text[batch_num] = "".join([idx2char[idx] for idx in tensor[batch_num]
-                               if idx not in [startindex, endindex]])'''
+    # text[batch_num] = "".join([idx2char[idx] for idx in tensor[batch_num]
+                               # if idx not in [startindex, endindex]])
 
     text[batch_num] = ""
     for idx in tensor[batch_num]:
@@ -77,7 +76,6 @@ def plot_attention(alignments, pred_text, encoder_len, training_step):
 
   img = ax.imshow(alignments, interpolation='nearest', cmap='Blues')
   ax.grid()
-  #fig.savefig('/home/rgadde/Desktop/OpenSeq2Seq/plots/file{}.png'.format(training_step), dpi=300)
 
   sbuffer = BytesIO()
   fig.savefig(sbuffer, dpi=300)
@@ -87,7 +85,8 @@ def plot_attention(alignments, pred_text, encoder_len, training_step):
       width=int(fig.get_figwidth() * 2)
   )
   summary = tf.Summary.Value(
-      tag="attention_summary_step_{}".format(int(training_step / 2200)), image=summary)
+      tag="attention_summary_step_{}".format(int(training_step / 2200)),
+      image=summary)
 
   plt.close(fig)
   return summary
@@ -105,6 +104,9 @@ class Speech2Text(EncoderDecoderModel):
     self.tensor_to_chars = sparse_tensor_to_chars
     self.tensor_to_char_params = {}
     self.autoregressive = data_layer.params.get('autoregressive', False)
+    if data_layer.params.get("jointctcrnn", False):
+      self.tensor_to_chars = dense_tensor_to_chars
+      self.tensor_to_char_params['endindex'] = data_layer.params['char2idx']['</S>']
     if self.autoregressive:
       self.params['decoder_params']['GO_SYMBOL'] = data_layer.start_index
       self.params['decoder_params']['END_SYMBOL'] = data_layer.end_index
@@ -115,12 +117,11 @@ class Speech2Text(EncoderDecoderModel):
     return super(Speech2Text, self)._create_decoder()
 
   def _create_loss(self):
-    if self.get_data_layer().params.get('autoregressive', False):
-      self.params['loss_params'][
-          'batch_size'] = self.params['batch_size_per_gpu']
-      self.params['loss_params']['tgt_vocab_size'] = (
-          self.get_data_layer().params['tgt_vocab_size']
-      )
+    self.params['loss_params'][
+        'batch_size'] = self.params['batch_size_per_gpu']
+    self.params['loss_params']['tgt_vocab_size'] = (
+        self.get_data_layer().params['tgt_vocab_size']
+    )
     return super(Speech2Text, self)._create_loss()
 
   def maybe_print_logs(self, input_values, output_values, training_step):
@@ -168,7 +169,7 @@ class Speech2Text(EncoderDecoderModel):
       return {
           'Sample WER': sample_wer,
       }
-    
+
   def finalize_evaluation(self, results_per_batch, training_step=None):
     total_word_lev = 0.0
     total_word_count = 0.0
@@ -208,7 +209,7 @@ class Speech2Text(EncoderDecoderModel):
         pred_text = self.get_data_layer().sp.DecodeIds(decoded_texts[sample_id])
       else:
         true_text = "".join(map(self.get_data_layer().params['idx2char'].get,
-                              y[:len_y]))
+                                y[:len_y]))
         pred_text = "".join(decoded_texts[sample_id])
       if self.get_data_layer().params.get('autoregressive', False):
         true_text = true_text[:-4]
