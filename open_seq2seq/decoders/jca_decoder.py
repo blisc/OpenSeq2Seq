@@ -19,16 +19,16 @@ class JointCTCAttentionDecoder(Decoder):
         'attn_decoder': None,
         'attn_decoder_params': dict,
         'ctc_decoder_params': dict,
-        'beam_search_params': dict,
-        'language_model_params': dict,
-        'GO_SYMBOL': int,  # symbol id
-        'END_SYMBOL': int,  # symbol id
+        # 'GO_SYMBOL': int,  # symbol id
+        # 'END_SYMBOL': int,  # symbol id
         'tgt_vocab_size': int,
     })
 
   @staticmethod
   def get_optional_params():
     return dict(Decoder.get_optional_params(), **{
+        'beam_search_params': dict,
+        'language_model_params': dict,
     })
 
   def __init__(self, params, model, name='jca_decoder', mode='train'):
@@ -57,16 +57,17 @@ class JointCTCAttentionDecoder(Decoder):
 
     self.ctc_params = self.params['ctc_decoder_params']
     self.attn_params = self.params['attn_decoder_params']
-    self.beam_search_params = self.params['beam_search_params']
-    self.lang_model_params = self.params['language_model_params']
+    self.beam_search_params = self.params.get('beam_search_params', {})
+    self.lang_model_params = self.params.get('language_model_params', {})
 
     self.attn_params.update(self.beam_search_params)
     self.attn_params.update(self.lang_model_params)
 
-    self.ctc_params['tgt_vocab_size'] = self.params['tgt_vocab_size'] - 1
+    # self.ctc_params['tgt_vocab_size'] = self.params['tgt_vocab_size'] - 1
+    self.ctc_params['tgt_vocab_size'] = self.params['tgt_vocab_size']
     self.attn_params['tgt_vocab_size'] = self.params['tgt_vocab_size']
-    self.attn_params['GO_SYMBOL'] = self.params['GO_SYMBOL']
-    self.attn_params['END_SYMBOL'] = self.params['END_SYMBOL']
+    # self.attn_params['GO_SYMBOL'] = self.params['GO_SYMBOL']
+    # self.attn_params['END_SYMBOL'] = self.params['END_SYMBOL']
 
     self.ctc_decoder = self.params['ctc_decoder'](
         params=self.ctc_params, mode=mode, model=model)

@@ -104,6 +104,8 @@ class RNNDecoder(Decoder):
     """
     encoder_outputs = input_dict['encoder_output']['outputs']
     regularizer = self.params.get('regularizer', None)
+    # Remove blank symbol
+    self.params['tgt_vocab_size'] = self.params['tgt_vocab_size'] - 1
 
     self._output_projection_layer = tf.layers.Dense(
         self.params['tgt_vocab_size'], use_bias=False,

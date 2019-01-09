@@ -2,9 +2,11 @@
 import tensorflow as tf
 from open_seq2seq.models import Speech2Text
 from open_seq2seq.encoders import TDNNEncoder
+from open_seq2seq.decoders import JointCTCAttentionDecoder
 from open_seq2seq.decoders.rnn_decoders import RNNDecoder
+from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
-from open_seq2seq.losses import BasicSequenceLoss
+from open_seq2seq.losses import MultiTaskCTCEntropyLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 residual = True
@@ -65,7 +67,7 @@ base_params = {
     "print_samples_steps": 2200,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
-    "logdir": "w2l_log_folder",
+    "logdir": "nsr_jcr_log",
     # "load_model": "w2l_log_folder",
     # "freeze_variables_regex": "w2l_encoder",
 
@@ -198,19 +200,54 @@ base_params = {
         "data_format": "channels_last",
     },
 
-    "decoder": RNNDecoder,
+    "decoder": JointCTCAttentionDecoder,
     "decoder_params": {
-        'tgt_vocab_size': int,
-        'num_rnn_layers': 3,
-        'rnn_cell_dim': 256,
-        "rnn_unidirectional": False,
-        "use_cudnn_rnn": True,
-        "rnn_type": tf.contrib.cudnn_rnn.CudnnLSTM,
+
+        "attn_decoder": RNNDecoder,
+        "attn_decoder_params": {
+            'tgt_vocab_size': int,
+            'num_rnn_layers': 3,
+            'rnn_cell_dim': 256,
+            "rnn_unidirectional": False,
+            "use_cudnn_rnn": True,
+            "rnn_type": tf.contrib.cudnn_rnn.CudnnLSTM,
+        },
+
+        "ctc_decoder": FullyConnectedCTCDecoder,
+        "ctc_decoder_params": {
+            "initializer": tf.contrib.layers.xavier_initializer,
+            "use_language_model": False,
+        },
+
+        # "beam_search_params": {
+        #     "beam_width": 4,
+        # },
+
+        # "language_model_params": {
+        #     # params for decoding the sequence with language model
+        #     "use_language_model": False,
+        # },
+
     },
-    "loss": BasicSequenceLoss,
+
+    "loss": MultiTaskCTCEntropyLoss,
     "loss_params": {
-        'offset_target_by_one': False,
-    },
+
+        "seq_loss_params": {
+            "offset_target_by_one": False,
+            "average_across_timestep": True,
+            "do_mask": True
+        },
+
+        "ctc_loss_params": {
+        },
+
+        "lambda_value": 0.25,
+    }
+    # "loss": BasicSequenceLoss,
+    # "loss_params": {
+    #     'offset_target_by_one': False,
+    # },
 }
 
 train_params = {

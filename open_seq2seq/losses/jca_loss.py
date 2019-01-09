@@ -49,7 +49,7 @@ class MultiTaskCTCEntropyLoss(Loss):
     self.lambda_value = self.params["lambda_value"]
 
     self.seq_loss_params["batch_size"] = self.params["batch_size"]
-    self.seq_loss_params["tgt_vocab_size"] = self.params["tgt_vocab_size"]
+    self.seq_loss_params["tgt_vocab_size"] = self.params["tgt_vocab_size"] - 1
 
     self.ctc_loss = CTCLoss(self.ctc_loss_params, model)
     self.seq_loss = BasicSequenceLoss(self.seq_loss_params, model)
