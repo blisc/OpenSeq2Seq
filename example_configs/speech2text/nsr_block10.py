@@ -1,7 +1,7 @@
 # pylint: skip-file
 import tensorflow as tf
 from open_seq2seq.models import Speech2Text
-from open_seq2seq.encoders import Wave2LetterEncoder
+from open_seq2seq.encoders import TDNNEncoder
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
@@ -54,7 +54,7 @@ base_model = Speech2Text
 base_params = {
     "random_seed": 0,
     "use_horovod": True,
-    "num_epochs": 200,
+    "num_epochs": 50,
 
     "num_gpus": 8,
     "batch_size_per_gpu": 128,
@@ -92,7 +92,7 @@ base_params = {
     "summaries": ['learning_rate', 'variables', 'gradients', 'larc_summaries',
                   'variable_norm', 'gradient_norm', 'global_gradient_norm'],
 
-    "encoder": Wave2LetterEncoder,
+    "encoder": TDNNEncoder,
     "encoder_params": {
         "convnet_layers": [
             {
@@ -195,9 +195,9 @@ base_params = {
         "activation_fn": lambda x: tf.minimum(tf.nn.relu(x), 20.0),
         "data_format": "channels_last",
 
-        "enable_rnn": False,
-        "rnn_cell_size": 256,
-        "rnn_layers": 1
+        # "enable_rnn": False,
+        # "rnn_cell_size": 256,
+        # "rnn_layers": 1
     },
 
     "decoder": FullyConnectedCTCDecoder,
@@ -214,7 +214,7 @@ base_params = {
         "lm_path": "language_model/4-gram.binary",
         "trie_path": "language_model/trie.binary",
         "alphabet_config_path": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        "temperature": 1.,
+        # "temperature": 1.,
     },
     "loss": CTCLoss,
     "loss_params": {},
@@ -230,7 +230,8 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "syn_ver": 3,
+        "syn_enable": True,
+        "syn_subdirs": ["1_50", "2_44", "3_47", "50", "46", "48"],
     },
 }
 
