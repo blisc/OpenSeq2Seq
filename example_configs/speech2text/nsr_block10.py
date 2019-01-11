@@ -232,6 +232,7 @@ train_params = {
         "shuffle": True,
         "syn_enable": True,
         "syn_subdirs": ["1_50", "2_44", "3_47", "50", "46", "48"],
+        "librosa": True
     },
 }
 
