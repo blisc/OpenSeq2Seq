@@ -235,7 +235,7 @@ base_params = {
 
         "seq_loss_params": {
             "offset_target_by_one": False,
-            "average_across_timestep": True,
+            # "average_across_timestep": True,
             "do_mask": True,
             "reduce_tgt_size_by_one": True
         },

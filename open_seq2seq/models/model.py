@@ -363,6 +363,7 @@ class Model:
       self._outputs = [None] * self.num_gpus
 
     self.loss = None
+    self.loss_debug = None
     self.train_op = None
     self.eval_losses = None
     self._num_objects_per_step = None

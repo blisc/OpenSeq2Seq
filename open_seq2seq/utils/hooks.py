@@ -110,7 +110,7 @@ class PrintLossAndTimeHook(tf.train.SessionRunHook):
     self._iter_count = 0
     self._global_step = None
     self._model = model
-    self._fetches = [model.loss]
+    self._fetches = [model.loss_debug] if model.loss_debug else [model.loss]
     self._last_time = time.time()
     self._print_ppl = print_ppl
 
@@ -148,9 +148,18 @@ class PrintLossAndTimeHook(tf.train.SessionRunHook):
                            loss/math.log(2)),
                    start="", end=", ")
       else:
-        deco_print(
-          "Train loss: {:.4f} ".format(loss),
-          offset=4)
+        # deco_print(
+        #   "Train loss: {:.4f} ".format(loss),
+        #   offset=4)
+        print(loss)
+        if isinstance(loss, list):
+          deco_print("Train loss: {:.4f} | seq loss = {:.4f} | ctc loss = {:.4f}"
+                     .format(loss[0], loss[1], loss[2]),
+                     start="", end=", ")
+        else:
+          deco_print(
+              "Train loss: {:.4f} ".format(loss),
+              offset=4)
 
     tm = (time.time() - self._last_time) / self._every_steps
     m, s = divmod(tm, 60)

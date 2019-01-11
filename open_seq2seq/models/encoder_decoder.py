@@ -169,6 +169,9 @@ class EncoderDecoderModel(Model):
               "target_tensors": target_tensors,
           }
           loss = self.loss_computator.compute_loss(loss_input_dict)
+          if isinstance(loss, dict):
+            self.loss_debug = [loss["loss"], loss["seq_loss"], loss["ctc_loss"]]
+            loss = loss["loss"]
       else:
         deco_print("Inference Mode. Loss part of graph isn't built.")
         loss = None

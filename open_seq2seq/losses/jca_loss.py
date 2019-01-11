@@ -80,6 +80,14 @@ class MultiTaskCTCEntropyLoss(Loss):
     }
 
     ctc_loss_value = self.ctc_loss.compute_loss(ctc_loss_input_dict)
+    ctc_loss_value *= self.lambda_value
     sequence_loss_value = self.seq_loss.compute_loss(seq_loss_input_dict)
+    sequence_loss_value *= (1 - self.lambda_value)
 
-    return (1 - self.lambda_value) * sequence_loss_value + self.lambda_value * ctc_loss_value
+    loss_dict = {
+        "loss": sequence_loss_value + ctc_loss_value,
+        "seq_loss": sequence_loss_value,
+        "ctc_loss": ctc_loss_value
+    }
+
+    return loss_dict
