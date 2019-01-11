@@ -14,7 +14,7 @@ residual_dense = True
 repeat_1 = 3
 repeat_2 = 3
 dropout_factor = 1.
-training_set = "combined"
+training_set = "libri"
 data_aug_enable = False
 
 if training_set == "libri":
@@ -261,6 +261,7 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
+        "usernn": True,
         "jointctcrnn": True,
         # "syn_ver": 3,
     },
@@ -276,6 +277,7 @@ eval_params = {
             "/data/librispeech/librivox-dev-clean.csv",
         ],
         "shuffle": False,
+        "usernn": True,
         "jointctcrnn": True,
     },
 }

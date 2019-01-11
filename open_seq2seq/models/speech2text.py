@@ -16,7 +16,7 @@ from open_seq2seq.utils.utils import deco_print
 from .encoder_decoder import EncoderDecoderModel
 
 
-def sparse_tensor_to_chars(tensor, idx2char):
+def sparse_tensor_to_chars(tensor, idx2char, **unused_args):
   text = [''] * tensor.dense_shape[0]
   for idx_tuple, value in zip(tensor.indices, tensor.values):
     text[idx_tuple[0]] += idx2char[value]
@@ -40,6 +40,7 @@ def dense_tensor_to_chars(tensor, idx2char, endindex):
     text[batch_num] = ""
     for idx in tensor[batch_num]:
       if idx == endindex:
+        text[batch_num] += idx2char[idx]
         break
       text[batch_num] += idx2char[idx]
   return text
@@ -104,10 +105,14 @@ class Speech2Text(EncoderDecoderModel):
     self.tensor_to_chars = sparse_tensor_to_chars
     self.tensor_to_char_params = {}
     self.autoregressive = data_layer.params.get('autoregressive', False)
-    if data_layer.params.get("jointctcrnn", False):
+    self.jointctcrnn = data_layer.params.get("jointctcrnn", False)
+    if self.jointctcrnn:
+      self.tensor_to_chars = [dense_tensor_to_chars, sparse_tensor_to_chars]
+      self.tensor_to_char_params['endindex'] = data_layer.params['char2idx']['</S>']
+    elif data_layer.params.get("usernn", False):
       self.tensor_to_chars = dense_tensor_to_chars
       self.tensor_to_char_params['endindex'] = data_layer.params['char2idx']['</S>']
-    if self.autoregressive:
+    elif self.autoregressive:
       self.params['decoder_params']['GO_SYMBOL'] = data_layer.start_index
       self.params['decoder_params']['END_SYMBOL'] = data_layer.end_index
       self.tensor_to_chars = dense_tensor_to_chars
@@ -117,7 +122,7 @@ class Speech2Text(EncoderDecoderModel):
     return super(Speech2Text, self)._create_decoder()
 
   def _create_loss(self):
-    if self.autoregressive or self.get_data_layer().params.get("jointctcrnn", False):
+    if self.autoregressive or self.get_data_layer().params.get("usernn", False):
       self.params['loss_params'][
           'batch_size'] = self.params['batch_size_per_gpu']
       self.params['loss_params']['tgt_vocab_size'] = (
@@ -143,11 +148,23 @@ class Speech2Text(EncoderDecoderModel):
           self.get_data_layer().params['idx2char'].get,
           y_one_sample[:len_y_one_sample],
       ))
-      pred_text = "".join(self.tensor_to_chars(
-          decoded_sequence_one_batch,
-          self.get_data_layer().params['idx2char'],
-          **self.tensor_to_char_params
-      )[0])
+      if self.jointctcrnn:
+        pred_text = "".join(self.tensor_to_chars[0](
+            decoded_sequence[0][0],
+            self.get_data_layer().params['idx2char'],
+            **self.tensor_to_char_params
+        )[0])
+        pred_text_ctc = "".join(self.tensor_to_chars[1](
+            decoded_sequence[1][0],
+            self.get_data_layer().params['idx2char'],
+            **self.tensor_to_char_params
+        )[0])
+      else:
+        pred_text = "".join(self.tensor_to_chars(
+            decoded_sequence_one_batch,
+            self.get_data_layer().params['idx2char'],
+            **self.tensor_to_char_params
+        )[0])
     sample_wer = levenshtein(true_text.split(), pred_text.split()) / \
         len(true_text.split())
 
@@ -160,6 +177,9 @@ class Speech2Text(EncoderDecoderModel):
     deco_print("Sample WER: {:.4f}".format(sample_wer), offset=4)
     deco_print("Sample target:     " + true_text, offset=4)
     deco_print("Sample prediction: " + pred_text, offset=4)
+    if self.jointctcrnn:
+      deco_print("Sample prediction: " + pred_text_ctc, offset=4)
+
 
     if self.plot_attention:
       return {
@@ -192,6 +212,12 @@ class Speech2Text(EncoderDecoderModel):
 
     if self.is_bpe:
       decoded_texts = sparse_tensor_to_chars_bpe(decoded_sequence)
+    elif self.jointctcrnn:
+      decoded_texts = self.tensor_to_chars[0](
+          decoded_sequence[0],
+          self.get_data_layer().params['idx2char'],
+          **self.tensor_to_char_params
+      )
     else:
       decoded_texts = self.tensor_to_chars(
           decoded_sequence,

@@ -224,7 +224,7 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "jointctcrnn": True,
+        "usernn": True,
         # "syn_ver": 3,
     },
 }
@@ -239,7 +239,7 @@ eval_params = {
             "/data/librispeech/librivox-dev-clean.csv",
         ],
         "shuffle": False,
-        "jointctcrnn": True,
+        "usernn": True,
     },
 }
 

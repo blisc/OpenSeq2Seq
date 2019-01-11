@@ -100,7 +100,7 @@ class JointCTCAttentionDecoder(Decoder):
     ctc_outputs = self.ctc_decoder.decode(input_dict=input_dict)
 
     return {
-        'outputs': seq_outputs['outputs'],
+        'outputs': [seq_outputs['outputs'], ctc_outputs['outputs']],
         'seq_outputs': seq_outputs,
         'ctc_outputs': ctc_outputs,
     }

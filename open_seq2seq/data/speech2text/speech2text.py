@@ -37,6 +37,7 @@ class Speech2TextDataLayer(DataLayer):
         'max_duration': float,
         'bpe': bool,
         'autoregressive': bool,
+        'usernn': bool,
         'jointctcrnn': bool,
         'syn_enable': bool,
         'syn_subdirs': list,
@@ -94,7 +95,7 @@ class Speech2TextDataLayer(DataLayer):
         self.params['char2idx']['</S>'] = self.end_index
         self.target_pad_value = self.end_index
       # Mode for joint ctc and rnn xentropy
-      elif self.params.get("jointctcrnn", False):
+      elif self.params.get("usernn", False):
         num_chars_orig = len(self.params['char2idx'])
         # Add two for blank ctc token, and end of sentence token
         self.params['tgt_vocab_size'] = len(self.params['char2idx']) + 2
@@ -348,7 +349,7 @@ class Speech2TextDataLayer(DataLayer):
       target_indices = self.sp.EncodeAsIds(transcript)
     else:
       target_indices = [self.params['char2idx'][c] for c in transcript]
-    if self.autoregressive or self.params.get("jointctcrnn", False):
+    if self.autoregressive or self.params.get("usernn", False):
       target_indices = target_indices + [self.end_index]
     target = np.array(target_indices)
 
