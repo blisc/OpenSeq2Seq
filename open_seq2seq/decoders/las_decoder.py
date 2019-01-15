@@ -34,7 +34,8 @@ class FullyConnected(tf.layers.Layer):
 
     Config parameters:
 
-    * **hidden_dims** (list) --- list of integers describing the hidden dimensions of a fully connected layer.
+    * **hidden_dims** (list) --- list of integers describing the hidden
+      dimensions of a fully connected layer.
     * **dropout_keep_prob** (float, optional) - dropout input keep probability.
     """
     super(FullyConnected, self).__init__(name=name)
@@ -42,11 +43,13 @@ class FullyConnected(tf.layers.Layer):
     self.dense_layers = []
     i = -1
     for i in range(len(hidden_dims) - 1):
-      self.dense_layers.append(tf.layers.Dense(
-          name="{}_{}".format(name, i), units=hidden_dims[i], use_bias=True, activation=tf.nn.relu)
+      self.dense_layers.append(
+          tf.layers.Dense(name="{}_{}".format(name, i), units=hidden_dims[i],
+                          use_bias=True, activation=tf.nn.relu)
       )
-    self.dense_layers.append(tf.layers.Dense(
-        name="{}_{}".format(name, i + 1), units=hidden_dims[i + 1], use_bias=True)
+    self.dense_layers.append(
+        tf.layers.Dense(name="{}_{}".format(name, i + 1),
+                        units=hidden_dims[i + 1], use_bias=True)
     )
     self.output_dim = hidden_dims[i + 1]
     self.mode = mode
@@ -55,7 +58,8 @@ class FullyConnected(tf.layers.Layer):
   def call(self, inputs):
     """
     Args:
-      inputs: Similar to tf.layers.Dense layer inputs. Internally calls a stack of dense layers.
+      inputs: Similar to tf.layers.Dense layer inputs. Internally calls a stack
+        of dense layers.
     """
     training = (self.mode == "train")
     dropout_keep_prob = self.dropout_keep_prob if training else 1.0
@@ -105,16 +109,21 @@ class ListenAttendSpellDecoder(Decoder):
       data layer.
     * **END_SYMBOL** (int) --- END symbol id, must be the same as used in
       data layer.
-    * **tgt_vocab_size** (int) --- vocabulary size of the targets to use for final softmax.
+    * **tgt_vocab_size** (int) --- vocabulary size of the targets to use for
+      final softmax.
     * **tgt_emb_size** (int) --- embedding size to use.
     * **attention_params** (dict) - parameters for attention mechanism.
-    * **rnn_type** (String) - String indicating the rnn type. Accepts ['lstm', 'gru'].
+    * **rnn_type** (String) - String indicating the rnn type.
+      Accepts ['lstm', 'gru'].
     * **hidden_dim** (int) - Hidden domension to be used the RNN decoder.
     * **num_layers** (int) - Number of decoder RNN layers.
     * **dropout_keep_prob** (float, optional) - dropout input keep probability.
-    * **pos_embedding** (bool, optional) - Whether to use encoder and decoder positional embedding. Default is False.
-    * **beam_width** (int, optional) - Beam width used while decoding with beam search. Uses greedy decoding if the value is set to 1. Default is 1.
-    * **use_language_model** (bool, optional) - Boolean indicating whether to use language model for decoding. Default is False.
+    * **pos_embedding** (bool, optional) - Whether to use encoder and decoder
+      positional embedding. Default is False.
+    * **beam_width** (int, optional) - Beam width used while decoding with beam
+      search. Uses greedy decoding if the value is set to 1. Default is 1.
+    * **use_language_model** (bool, optional) - Boolean indicating whether to
+      use language model for decoding. Default is False.
     """
     super(ListenAttendSpellDecoder, self).__init__(params, model, name, mode)
     self.GO_SYMBOL = self.params['GO_SYMBOL']
@@ -142,11 +151,15 @@ class ListenAttendSpellDecoder(Decoder):
     Returns:
       dict: Python dictionary with:
       * outputs - [predictions, alignments, enc_src_lengths].
-        predictions are the final predictions of the model. tensor of shape [batch_size, time].
-        alignments are the attention probabilities if attention is used. None if 'plot_attention' in attention_params is set to False.
-        enc_src_lengths are the lengths of the input. tensor of shape [batch_size].
+        predictions are the final predictions of the model. tensor of
+          shape [batch_size, time].
+        alignments are the attention probabilities if attention is used.
+          None if 'plot_attention' in attention_params is set to False.
+        enc_src_lengths are the lengths of the input. tensor of
+          shape [batch_size].
       * logits - logits with the shape=[batch_size, output_dim].
-      * tgt_length - tensor of shape [batch_size] indicating the predicted sequence lengths.
+      * tgt_length - tensor of shape [batch_size] indicating the predicted
+        sequence lengths.
     """
     encoder_outputs = input_dict['encoder_output']['outputs']
     enc_src_lengths = input_dict['encoder_output']['src_length']
@@ -219,7 +232,7 @@ class ListenAttendSpellDecoder(Decoder):
 
     dropout = tf.nn.rnn_cell.DropoutWrapper
 
-    multirnn_cell = tf.nn.rnn_cell.MultiRNNCell(
+    multirnn_cell_with_attention = multirnn_cell = tf.nn.rnn_cell.MultiRNNCell(
         [dropout(rnn_cell(hidden_dim),
                  output_keep_prob=dropout_keep_prob)
          for _ in range(num_layers)]
@@ -235,58 +248,59 @@ class ListenAttendSpellDecoder(Decoder):
           multiplier=self._beam_width,
       )
 
-    attention_dim = attention_params["attention_dim"]
-    attention_type = attention_params["attention_type"]
-    num_heads = attention_params["num_heads"]
-    plot_attention = attention_params["plot_attention"]
-    if plot_attention:
-      if use_beam_search_decoder:
-        plot_attention = False
-        print("Plotting Attention is disabled for Beam Search Decoding")
-      if num_heads != 1:
-        plot_attention = False
-        print("Plotting Attention is disabled for Multi Head Attention")
-      if self.params['dtype'] != tf.float32:
-        plot_attention = False
-        print("Plotting Attention is disabled for Mixed Precision Mode")
+    if attention_params["attention_type"] != "None":
+      attention_dim = attention_params["attention_dim"]
+      attention_type = attention_params["attention_type"]
+      num_heads = attention_params["num_heads"]
+      plot_attention = attention_params["plot_attention"]
+      if plot_attention:
+        if use_beam_search_decoder:
+          plot_attention = False
+          print("Plotting Attention is disabled for Beam Search Decoding")
+        if num_heads != 1:
+          plot_attention = False
+          print("Plotting Attention is disabled for Multi Head Attention")
+        if self.params['dtype'] != tf.float32:
+          plot_attention = False
+          print("Plotting Attention is disabled for Mixed Precision Mode")
 
-    attention_params_dict = {}
-    if attention_type == "bahadanu":
-      AttentionMechanism = BahdanauAttention
-      attention_params_dict["normalize"] = False,
-    elif attention_type == "chorowski":
-      AttentionMechanism = LocationSensitiveAttention
-      attention_params_dict["use_coverage"] = attention_params["use_coverage"]
-      attention_params_dict["location_attn_type"] = attention_type
-      attention_params_dict["location_attention_params"] = {
-          'filters': 10, 'kernel_size': 101}
-    elif attention_type == "zhaopeng":
-      AttentionMechanism = LocationSensitiveAttention
-      attention_params_dict["use_coverage"] = attention_params["use_coverage"]
-      attention_params_dict["query_dim"] = hidden_dim
-      attention_params_dict["location_attn_type"] = attention_type
+      attention_params_dict = {}
+      if attention_type == "bahadanu":
+        AttentionMechanism = BahdanauAttention
+        attention_params_dict["normalize"] = False
+      elif attention_type == "chorowski":
+        AttentionMechanism = LocationSensitiveAttention
+        attention_params_dict["use_coverage"] = attention_params["use_coverage"]
+        attention_params_dict["location_attn_type"] = attention_type
+        attention_params_dict["location_attention_params"] = {
+            'filters': 10, 'kernel_size': 101}
+      elif attention_type == "zhaopeng":
+        AttentionMechanism = LocationSensitiveAttention
+        attention_params_dict["use_coverage"] = attention_params["use_coverage"]
+        attention_params_dict["query_dim"] = hidden_dim
+        attention_params_dict["location_attn_type"] = attention_type
 
-    attention_mechanism = []
+      attention_mechanism = []
 
-    for head in range(num_heads):
-      attention_mechanism.append(
-          AttentionMechanism(
-              num_units=attention_dim,
-              memory=encoder_outputs,
-              memory_sequence_length=enc_src_lengths,
-              probability_fn=tf.nn.softmax,
-              dtype=tf.get_variable_scope().dtype,
-              **attention_params_dict
-          )
+      for head in range(num_heads):
+        attention_mechanism.append(
+            AttentionMechanism(
+                num_units=attention_dim,
+                memory=encoder_outputs,
+                memory_sequence_length=enc_src_lengths,
+                probability_fn=tf.nn.softmax,
+                dtype=tf.get_variable_scope().dtype,
+                **attention_params_dict
+            )
+        )
+
+      multirnn_cell_with_attention = AttentionWrapper(
+          cell=multirnn_cell,
+          attention_mechanism=attention_mechanism,
+          attention_layer_size=[hidden_dim for i in range(num_heads)],
+          output_attention=True,
+          alignment_history=plot_attention,
       )
-
-    multirnn_cell_with_attention = AttentionWrapper(
-        cell=multirnn_cell,
-        attention_mechanism=attention_mechanism,
-        attention_layer_size=[hidden_dim for i in range(num_heads)],
-        output_attention=True,
-        alignment_history=plot_attention,
-    )
 
     if self._mode == "train":
       decoder_output_positions = tf.range(
