@@ -1,16 +1,21 @@
 # pylint: skip-file
 import tensorflow as tf
 from open_seq2seq.models import Speech2Text
-from open_seq2seq.encoders import TDNNEncoder
+from open_seq2seq.encoders.tdnn_encoder import TDNNEncoder2
+from open_seq2seq.parts.convs2s.utils import gated_linear_units
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
-residual = True
-residual_dense = True
-repeat_1 = 3
-repeat_2 = 3
+# normalization = "weight_norm"
+# activation = gated_linear_units
+normalization = "batch_norm"
+activation = tf.nn.relu
+
+residual = False
+residual_dense = False
+repeat = 3
 dropout_factor = 1.
 training_set = "libri"
 data_aug_enable = False
@@ -26,21 +31,8 @@ elif training_set == "combined":
             "/data/librispeech/librivox-train-clean-360.csv",
             "/data/librispeech/librivox-train-other-500.csv",
             "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
-elif training_set == "MAILABS_LibriSpeech":
-    dataset_files = [
-            "/data/librispeech/librivox-train-clean-100.csv",
-            "/data/librispeech/librivox-train-clean-360.csv",
-            "/data/librispeech/librivox-train-other-500.csv",
-            "/mnt/hdd/data/MAILABS/train.csv"]
 elif training_set == "syn":
     dataset_files = ["/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
-elif training_set == "combined_33_66":
-    dataset_files = [
-            "/data/librispeech/librivox-train-clean-100.csv",
-            "/data/librispeech/librivox-train-clean-360.csv",
-            "/data/librispeech/librivox-train-other-500.csv",
-            "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt",
-            "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
 
 data_aug = {}
 if data_aug_enable == True:
@@ -57,7 +49,7 @@ base_params = {
     "num_epochs": 50,
 
     "num_gpus": 8,
-    "batch_size_per_gpu": 32,
+    "batch_size_per_gpu": 64,
     "iter_size": 1,
 
     "save_summaries_steps": 100,
@@ -65,7 +57,7 @@ base_params = {
     "print_samples_steps": 2200,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
-    "logdir": "w2l_log_folder",
+    "logdir": "jasper_log_folder",
 
     "optimizer": "Momentum",
     "optimizer_params": {
@@ -86,13 +78,13 @@ base_params = {
         'scale': 0.001
     },
 
-    "dtype": "mixed",
-    "loss_scaling": "Backoff",
+    "dtype": tf.float32,
+    # "loss_scaling": "Backoff",
 
     "summaries": ['learning_rate', 'variables', 'gradients', 'larc_summaries',
                   'variable_norm', 'gradient_norm', 'global_gradient_norm'],
 
-    "encoder": TDNNEncoder,
+    "encoder": TDNNEncoder2,
     "encoder_params": {
         "convnet_layers": [
             {
@@ -102,70 +94,35 @@ base_params = {
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
-                "type": "conv1d", "repeat": repeat_1,
+                "type": "conv1d", "repeat": repeat,
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": repeat_2,
-                "kernel_size": [11], "stride": [1],
-                "num_channels": 256, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
-            },
-            {
-                "type": "conv1d", "repeat": repeat_1,
+                "type": "conv1d", "repeat": repeat,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": repeat_2,
-                "kernel_size": [13], "stride": [1],
-                "num_channels": 384, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
-            },
-            {
-                "type": "conv1d", "repeat": repeat_1,
+                "type": "conv1d", "repeat": repeat,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": repeat_2,
-                "kernel_size": [17], "stride": [1],
-                "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
-            },
-            {
-                "type": "conv1d", "repeat": repeat_1,
+                "type": "conv1d", "repeat": repeat,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual, "residual_dense": residual_dense
             },
             {
-                "type": "conv1d", "repeat": repeat_2,
-                "kernel_size": [21], "stride": [1],
-                "num_channels": 640, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
-            },
-            {
-                "type": "conv1d", "repeat": repeat_1,
-                "kernel_size": [25], "stride": [1],
-                "num_channels": 768, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
-            },
-            {
-                "type": "conv1d", "repeat": repeat_2,
+                "type": "conv1d", "repeat": repeat,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
@@ -191,13 +148,9 @@ base_params = {
         "initializer_params": {
             'uniform': False,
         },
-        "normalization": "batch_norm",
-        "activation_fn": lambda x: tf.minimum(tf.nn.relu(x), 20.0),
+        "normalization": normalization,
+        "activation_fn": activation,
         "data_format": "channels_last",
-
-        # "enable_rnn": False,
-        # "rnn_cell_size": 256,
-        # "rnn_layers": 1
     },
 
     "decoder": FullyConnectedCTCDecoder,
@@ -214,36 +167,30 @@ base_params = {
         "lm_path": "language_model/4-gram.binary",
         "trie_path": "language_model/trie.binary",
         "alphabet_config_path": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        # "temperature": 1.,
     },
     "loss": CTCLoss,
     "loss_params": {},
-
-    "data_layer": Speech2TextDataLayer,
-    "data_layer_params": {
-        "num_audio_features": 64,
-        "input_type": "logfbank",
-        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        "librosa": False
-    },
 }
 
 train_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
+        "num_audio_features": 64,
+        "input_type": "logfbank",
+        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "augmentation": data_aug,
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "syn_enable": True,
-        "syn_subdirs": ["1_50", "2_44", "3_47", "50", "46", "48"],
     },
 }
 
 eval_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
-
+        "num_audio_features": 64,
+        "input_type": "logfbank",
+        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "dataset_files": [
             "/data/librispeech/librivox-dev-clean.csv",
         ],
@@ -254,6 +201,9 @@ eval_params = {
 infer_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
+        "num_audio_features": 64,
+        "input_type": "logfbank",
+        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "dataset_files": [
             "/data/librispeech/librivox-test-clean.csv",
         ],

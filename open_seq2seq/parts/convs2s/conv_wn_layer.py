@@ -28,6 +28,8 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
                normalization_type="weight_norm",
                regularizer=None, # tf.contrib.layers.l2_regularizer(scale=1e-4)
                init_var=None,
+               dilation=None,
+               stride=1
                ):
     """initializes the 1D convolution layer.
     It uses weight normalization (Salimans & Kingma, 2016)  w = g * v/2-norm(v)
@@ -42,8 +44,9 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
                       Give 1.0 if no dropout.
                       It is used to initialize the weights of convolution.
       conv_padding: str the type of padding done for convolution
-      decode_padding: bool specifies if this convolution layer is in decoder or not
-                          in decoder padding is done explicitly before convolution
+      decode_padding: bool specifies if this convolution layer is in decoder or
+                      not in decoder padding is done explicitly before
+                      convolution
       activation: the activation function applies after the convolution
       normalization_type: str specifies the normalization used for the layer.
                     "weight_norm" for weight normalization or
@@ -62,6 +65,8 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
     self.layer_id = layer_id
     self.act_func = activation
     self.regularizer = regularizer
+    self.dilation = dilation
+    self.stride = stride
 
     if normalization_type == "batch_norm":
       self.apply_batch_norm = True
@@ -100,7 +105,7 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
         self.V = tf.get_variable(
             'V',
             shape=[kernel_width, in_dim, conv_out_size],
-            initializer=tf.random_normal_initializer(mean=0, stddev=V_std),
+            # initializer=tf.random_normal_initializer(mean=0, stddev=V_std),
             trainable=True)
         self.V_norm = tf.norm(self.V.initialized_value(), axis=[0, 1])
         self.g = tf.get_variable('g', initializer=self.V_norm, trainable=True)
@@ -110,9 +115,9 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
         self.W = tf.get_variable(
             'W',
             shape=[kernel_width, in_dim, conv_out_size],
-            initializer=tf.random_normal_initializer(mean=0, stddev=V_std),
-            trainable=True,
-            regularizer=self.regularizer)
+            # initializer=tf.random_normal_initializer(mean=0, stddev=V_std),
+            # regularizer=self.regularizer,
+            trainable=True)
 
       if self.bias_enabled:
         self.b = tf.get_variable(
@@ -148,24 +153,33 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
           output, [[0, 0], [self.kernel_width - 1, self.kernel_width - 1], [0, 0]],
           "CONSTANT")
 
-    output = tf.nn.conv1d(
-        value=output, filters=self.W, stride=1, padding=self.conv_padding)
+    if self.dilation:
+      filters = tf.expand_dims(self.W, axis=0)
+      output = tf.expand_dims(output, axis=1)
+      output = tf.nn.conv2d(
+          input=output, filter=filters, strides=[1, 1, 1, 1],
+          padding=self.conv_padding, dilations=[1, 1, self.dilation, 1])
+    else:
+      output = tf.nn.conv1d(
+          value=output, filters=self.W,
+          stride=self.stride, padding=self.conv_padding)
+
 
     if self.decode_padding and self.kernel_width > 1:
       output = output[:, 0:-self.kernel_width + 1, :]
 
     if self.apply_batch_norm:
       # trick to make batchnorm work for mixed precision training.
-      bn_input = tf.expand_dims(output, axis=1)
-      bn_output = tf.layers.batch_normalization(
+      if not self.dilation:
+        output = tf.expand_dims(output, axis=1)
+      output = tf.layers.batch_normalization(
           name="batch_norm_" + str(self.layer_id),
-          inputs=bn_input,
+          inputs=output,
           training=self.mode == 'train',
-          axis=-1,
-          momentum=0.95,
-          epsilon=1e-4
+          axis=-1
       )
-      output = tf.squeeze(bn_output, axis=1)
+    if self.apply_batch_norm or self.dilation:
+      output = tf.squeeze(output, axis=1)
 
     if self.apply_layer_norm:
       output = self.layer_norm(output)

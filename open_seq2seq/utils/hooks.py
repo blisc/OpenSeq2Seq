@@ -151,7 +151,6 @@ class PrintLossAndTimeHook(tf.train.SessionRunHook):
         # deco_print(
         #   "Train loss: {:.4f} ".format(loss),
         #   offset=4)
-        print(loss)
         if isinstance(loss, list):
           deco_print("Train loss: {:.4f} | seq loss = {:.4f} | ctc loss = {:.4f}"
                      .format(loss[0], loss[1], loss[2]),
