@@ -9,9 +9,16 @@ from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 # normalization = "weight_norm"
+# normalization = "batch_norm"
+# normalization = None
+# normalization = "layer_norm"
 # activation = gated_linear_units
-normalization = "batch_norm"
-activation = tf.nn.relu
+# activation = tf.nn.relu
+# activation = lambda x: tf.minimum(tf.nn.relu(x), 20.0)
+# activation = tf.nn.leaky_relu
+
+normalization = replace
+activation = replace
 
 residual = False
 residual_dense = False
