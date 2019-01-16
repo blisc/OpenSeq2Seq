@@ -310,6 +310,8 @@ class TDNNEncoder2(Encoder):
       # layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
       ch_out = convnet_layers[idx_convnet]['num_channels']
+      if activation is gated_linear_units:
+        ch_out = ch_out * 2
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']
