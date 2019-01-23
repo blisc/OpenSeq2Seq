@@ -7,6 +7,18 @@ from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
+# normalization = "weight_norm"
+# normalization = "batch_norm"
+# normalization = None
+# normalization = "layer_norm"
+# activation = gated_linear_units
+# activation = tf.nn.relu
+# activation = lambda x: tf.minimum(tf.nn.relu(x), 20.0)
+# activation = tf.nn.leaky_relu
+
+normalization = replace
+activation = replace
+
 residual = False
 residual_dense = False
 repeat = 3
@@ -144,8 +156,8 @@ base_params = {
         "initializer_params": {
             'uniform': False,
         },
-        "normalization": "batch_norm",
-        "activation_fn": tf.nn.relu,
+        "normalization": normalization,
+        "activation_fn": activation,
         "data_format": "channels_last",
 
         # "enable_rnn": False

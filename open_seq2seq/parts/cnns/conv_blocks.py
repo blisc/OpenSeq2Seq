@@ -7,6 +7,7 @@ from six.moves import range
 
 import tensorflow as tf
 from .tcn import tcn
+from .conv1d_wn import conv1d_wn
 
 layers_dict = {
     "conv1d": tf.layers.conv1d,
@@ -268,6 +269,34 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
   if activation_fn is not None:
     output = activation_fn(output)
   return output
+
+def conv1d_wn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
+                   strides, padding, regularizer, training, data_format,
+                   dilation):
+  """Helper function that applies convolution, batch norm and activation.
+    Args:
+      layer_type: the following types are supported
+        'conv1d', 'conv2d'
+  """
+
+  conv = conv1d_wn(
+      name="{}".format(name),
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=padding,
+      dilation_rate=dilation,
+      kernel_regularizer=regularizer,
+      use_bias=False,
+      data_format=data_format,
+  )
+
+  output = conv
+  if activation_fn is not None:
+    output = activation_fn(output)
+  return output
+
 
 def conv2d_actv(name, inputs, filters, kernel_size, activation_fn,
                 strides, padding, training, regularizer, data_format,

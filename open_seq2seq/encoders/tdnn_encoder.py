@@ -9,7 +9,7 @@ from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv,\
                                                 conv_ln_actv, conv_in_actv,\
                                                 conv_bn_res_bn_actv, \
                                                 conv2d_actv, conv2d_bn_actv, \
-                                                conv2d_wn_actv
+                                                conv1d_wn_actv, conv2d_wn_actv
 from open_seq2seq.parts.convs2s.conv_wn_layer import Conv1DNetworkNormalized
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
@@ -33,7 +33,7 @@ class TDNNEncoder(Encoder):
   def get_optional_params():
     return dict(Encoder.get_optional_params(), **{
         'data_format': ['channels_first', 'channels_last'],
-        'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm'],
+        'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm', 'weight_norm'],
         'bn_momentum': float,
         'bn_epsilon': float,
     })
@@ -122,6 +122,8 @@ class TDNNEncoder(Encoder):
       conv_block = conv_ln_actv
     elif normalization == "instance_norm":
       conv_block = conv_in_actv
+    elif normalization == "weight_norm":
+      conv_block = conv1d_wn_actv
     else:
       raise ValueError("Incorrect normalization")
 
