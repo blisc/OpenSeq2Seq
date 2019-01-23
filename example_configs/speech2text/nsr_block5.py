@@ -66,7 +66,7 @@ base_params = {
     # "larc_params": {
     #     "larc_eta": 0.001,
     # },
-    "max_grad_norm": 0.1,
+    "max_grad_norm": 1.,
 
 
     "regularizer": tf.contrib.layers.l2_regularizer,
