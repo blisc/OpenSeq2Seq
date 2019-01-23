@@ -201,18 +201,18 @@ class TDNNEncoder(Encoder):
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])
 
-    if self._mode == "train":
-      for var in tf.trainable_variables():
-        if "kernel" in var.name:
-          if var.dtype.base_dtype == tf.float16:
-            tf.add_to_collection(
-                'REGULARIZATION_FUNCTIONS', (var, regularizer)
-            )
-          else:
-            print("Added regularizer to {}".format(var.name))
-            tf.add_to_collection(
-                ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(var)
-            )
+    # if self._mode == "train":
+    #   for var in tf.trainable_variables():
+    #     if "kernel" in var.name:
+    #       if var.dtype.base_dtype == tf.float16:
+    #         tf.add_to_collection(
+    #             'REGULARIZATION_FUNCTIONS', (var, regularizer)
+    #         )
+    #       else:
+    #         print("Added regularizer to {}".format(var.name))
+    #         tf.add_to_collection(
+    #             ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(var)
+    #         )
 
     return {
         'outputs': outputs,

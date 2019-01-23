@@ -178,6 +178,9 @@ train_params = {
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "augmentation": data_aug,
         "dataset_files": dataset_files,
+        # "dataset_files": [
+        #     "/data/librispeech/librivox-dev-clean.csv",
+        # ],
         "max_duration": 16.7,
         "shuffle": True,
         # "syn_ver": 3,

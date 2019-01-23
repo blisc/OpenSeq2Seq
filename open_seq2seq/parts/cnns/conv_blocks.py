@@ -134,7 +134,8 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
   """
   layer = layers_dict[layer_type]
 
-  conv = layer(
+  # Ravi's code
+  conv = tf.layers.conv1d(
       name="{}".format(name),
       inputs=inputs,
       filters=filters,
@@ -142,10 +143,28 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
       strides=strides,
       padding=padding,
       dilation_rate=dilation,
-      # kernel_regularizer=regularizer,
+      kernel_regularizer=regularizer,
+      # kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
       use_bias=False,
       data_format=data_format,
   )
+
+  # Needed for wn
+  # with tf.variable_scope(name):
+  #   weights=tf.get_variable(
+  #       "kernel",
+  #       shape=[kernel_size[0], inputs.get_shape().as_list()[-1], filters],
+  #       regularizer=regularizer,
+  #       initializer=tf.contrib.layers.xavier_initializer(uniform=False),
+  #       trainable=True
+  #   )
+  #   conv = tf.nn.conv1d(
+  #       value=inputs,
+  #       filters=weights,
+  #       data_format='NWC',
+  #       stride=strides[0],
+  #       padding=padding,
+  #   )
 
   # trick to make batchnorm work for mixed precision training.
   # To-Do check if batchnorm works smoothly for >4 dimensional tensors
