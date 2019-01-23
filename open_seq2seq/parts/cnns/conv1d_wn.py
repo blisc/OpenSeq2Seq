@@ -41,63 +41,63 @@ class Conv1D_WN(tf.layers.Conv1D):
         trainable=trainable,
         name=name, **kwargs)
 
-    def build(self, input_shape):
-      input_shape = tf.TensorShape(input_shape)
-      if self.data_format == 'channels_first':
-        channel_axis = 1
-      else:
-        channel_axis = -1
-      if input_shape[channel_axis].value is None:
-        raise ValueError('The channel dimension of the inputs '
-                         'should be defined. Found `None`.')
-      input_dim = int(input_shape[channel_axis])
-      kernel_shape = self.kernel_size + (input_dim, self.filters)
+  def build(self, input_shape):
+    input_shape = tf.TensorShape(input_shape)
+    if self.data_format == 'channels_first':
+      channel_axis = 1
+    else:
+      channel_axis = -1
+    if input_shape[channel_axis].value is None:
+      raise ValueError('The channel dimension of the inputs '
+                       'should be defined. Found `None`.')
+    input_dim = int(input_shape[channel_axis])
+    kernel_shape = self.kernel_size + (input_dim, self.filters)
 
-      direction = self.add_weight(
-          name='direction',
-          shape=kernel_shape,
-          initializer=self.kernel_initializer,
-          # regularizer=self.kernel_regularizer,
-          constraint=self.kernel_constraint,
+    direction = self.add_weight(
+        name='direction',
+        shape=kernel_shape,
+        initializer=self.kernel_initializer,
+        # regularizer=self.kernel_regularizer,
+        constraint=self.kernel_constraint,
+        trainable=True,
+        dtype=self.dtype)
+    direction_norm = tf.norm(direction.initialized_value(), axis=[0, 1])
+    weight = self.add_weight(
+        name='weight',
+        shape=[self.filters],
+        initializer=lambda shape, dtype, partition_info: direction_norm,
+        regularizer=self.kernel_regularizer,
+        constraint=self.kernel_constraint,
+        trainable=True,
+        dtype=self.dtype)
+    self.kernel = tf.reshape(weight, [1, 1, self.filters]) * tf.nn.l2_normalize(
+        direction, [0, 1])
+    if self.use_bias:
+      self.bias = self.add_weight(
+          name='bias',
+          shape=(self.filters,),
+          initializer=self.bias_initializer,
+          regularizer=self.bias_regularizer,
+          constraint=self.bias_constraint,
           trainable=True,
           dtype=self.dtype)
-      direction_norm = tf.norm(self.direction.initialized_value(), axis=[0, 1])
-      weight = self.add_weight(
-          name='weight',
-          shape=[self.filters],
-          initializer=direction_norm,
-          regularizer=self.kernel_regularizer,
-          constraint=self.kernel_constraint,
-          trainable=True,
-          dtype=self.dtype)
-      self.kernel = tf.reshape(weight, [1, 1, self.filters]) * tf.nn.l2_normalize(
-          direction, [0, 1])
-      if self.use_bias:
-        self.bias = self.add_weight(
-            name='bias',
-            shape=(self.filters,),
-            initializer=self.bias_initializer,
-            regularizer=self.bias_regularizer,
-            constraint=self.bias_constraint,
-            trainable=True,
-            dtype=self.dtype)
-      else:
-        self.bias = None
-      self.input_spec = InputSpec(ndim=self.rank + 2,
-                                  axes={channel_axis: input_dim})
-      if self.padding == 'causal':
-        op_padding = 'valid'
-      else:
-        op_padding = self.padding
-      self._convolution_op = nn_ops.Convolution(
-          input_shape,
-          filter_shape=self.kernel.get_shape(),
-          dilation_rate=self.dilation_rate,
-          strides=self.strides,
-          padding=op_padding.upper(),
-          data_format=conv_utils.convert_data_format(self.data_format,
-                                                     self.rank + 2))
-      self.built = True
+    else:
+      self.bias = None
+    self.input_spec = InputSpec(ndim=self.rank + 2,
+                                axes={channel_axis: input_dim})
+    if self.padding == 'causal':
+      op_padding = 'valid'
+    else:
+      op_padding = self.padding
+    self._convolution_op = nn_ops.Convolution(
+        input_shape,
+        filter_shape=self.kernel.get_shape(),
+        dilation_rate=self.dilation_rate,
+        strides=self.strides,
+        padding=op_padding.upper(),
+        data_format=conv_utils.convert_data_format(self.data_format,
+                                                   self.rank + 2))
+    self.built = True
 
 def conv1d_wn(inputs,
            filters,

@@ -342,6 +342,9 @@ def post_process_gradients(grads_and_vars, summaries, lr,
 
     grads_and_vars_larc = [None] * len(grads_and_vars)
     for idx, (g, v) in enumerate(grads_and_vars):
+      # if "direction" in v.name:
+      #   grads_and_vars_larc[idx] = (g, v)
+      #   continue
       var_dtype = v.dtype
       v_norm = tf.norm(tensor=tf.cast(v, tf.float32), ord=2)
       g_norm = tf.norm(tensor=tf.cast(g, tf.float32), ord=2)
