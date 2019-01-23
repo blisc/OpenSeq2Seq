@@ -3,10 +3,13 @@ from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv,\
                                                 conv_ln_actv, conv_in_actv,\
-                                                conv_bn_res_bn_actv
+                                                conv_bn_res_bn_actv, \
+                                                conv2d_actv, conv2d_bn_actv, \
+                                                conv2d_wn_actv
 from open_seq2seq.parts.convs2s.conv_wn_layer import Conv1DNetworkNormalized
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
@@ -198,6 +201,19 @@ class TDNNEncoder(Encoder):
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])
 
+    if self._mode == "train":
+      for var in tf.trainable_variables():
+        if "kernel" in var.name:
+          if var.dtype.base_dtype == tf.float16:
+            tf.add_to_collection(
+                'REGULARIZATION_FUNCTIONS', (var, regularizer)
+            )
+          else:
+            print("Added regularizer to {}".format(var.name))
+            tf.add_to_collection(
+                ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(var)
+            )
+
     return {
         'outputs': outputs,
         'src_length': src_length,
@@ -294,8 +310,14 @@ class TDNNEncoder2(Encoder):
     data_format = self.params.get('data_format', 'channels_last')
     normalization = self.params.get('normalization', 'batch_norm')
 
-    normalization_params = {}
-    # conv_block = Conv1DNetworkNormalized
+    if normalization is None:
+      conv_block = conv2d_actv
+    elif normalization == "batch_norm":
+      conv_block = conv2d_bn_actv
+    elif normalization == "weight_norm":
+      conv_block = conv2d_wn_actv
+    else:
+      raise ValueError("Incorrect normalization")
 
     conv_inputs = source_sequence
     if data_format == 'channels_last':
@@ -304,6 +326,7 @@ class TDNNEncoder2(Encoder):
       conv_feats = tf.transpose(conv_inputs, [0, 2, 1])  # B F T
 
     residual_aggregation = []
+    conv_feats = tf.expand_dims(conv_feats, axis=1)
 
     # ----- Convolutional layers ---------------------------------------------
     convnet_layers = self.params['convnet_layers']
@@ -335,22 +358,22 @@ class TDNNEncoder2(Encoder):
           src_length = (src_length + strides[0] - 1) // strides[0]
 
         # Build conv layer
-        layer = Conv1DNetworkNormalized(
-            in_dim=conv_feats.get_shape().as_list()[-1],
-            out_dim=ch_out,
-            kernel_width=kernel_size[0],
-            mode=self._mode,
-            layer_id="{}_{}".format(idx_convnet + 1, idx_layer + 1),
-            hidden_dropout=1.,
-            conv_padding=padding,
-            decode_padding=False,
-            activation=None,
-            normalization_type=normalization,
-            regularizer=regularizer,
-            dilation=dilation[0],
-            stride=strides[0]
-        )
-        conv_feats = layer(conv_feats)
+        # layer = Conv1DNetworkNormalized(
+        #     in_dim=conv_feats.get_shape().as_list()[-1],
+        #     out_dim=ch_out,
+        #     kernel_width=kernel_size[0],
+        #     mode=self._mode,
+        #     layer_id="{}_{}".format(idx_convnet + 1, idx_layer + 1),
+        #     hidden_dropout=dropout_keep,
+        #     conv_padding=padding,
+        #     decode_padding=False,
+        #     activation=None,
+        #     normalization_type=normalization,
+        #     regularizer=regularizer,
+        #     dilation=dilation[0],
+        #     stride=strides[0]
+        # )
+        # conv_feats = layer(conv_feats)
 
         # conv_feats = tf.layers.conv1d(
         #     conv_feats,
@@ -380,29 +403,58 @@ class TDNNEncoder2(Encoder):
         #   conv_feats = tf.nn.conv1d(
         #   value=conv_feats, filters=w, stride=strides[0], padding=padding)
 
-        # Build residual layers as needed
-        if residual and idx_layer == layer_repeat - 1:
-          total_res = 0
-          for i, res in enumerate(layer_res):
-            res_layer = FeedFowardNetworkNormalized(
-                in_dim=res.get_shape().as_list()[-1],
-                out_dim=ch_out,
-                dropout=1.,
-                var_scope_name="res_{}".format(idx_convnet + 1),
-                mode=self._mode,
-                normalization_type=normalization,
-                regularizer=regularizer
-            )
-            total_res += res_layer(res)
-          conv_feats += total_res
+        conv_feats = conv_block(
+            name="conv{}{}".format(
+                idx_convnet + 1, idx_layer + 1),
+            inputs=conv_feats,
+            filters=ch_out,
+            kernel_size=kernel_size,
+            activation_fn=self.params['activation_fn'],
+            strides=strides,
+            padding=padding,
+            regularizer=regularizer,
+            dilation=dilation,
+            training=training,
+            data_format=data_format,
+        )
 
-        conv_feats = self.params["activation_fn"](conv_feats)
+        # Build residual layers as needed
+        # if residual and idx_layer == layer_repeat - 1:
+        #   total_res = 0
+        #   for i, res in enumerate(layer_res):
+        #     res_layer = FeedFowardNetworkNormalized(
+        #         in_dim=res.get_shape().as_list()[-1],
+        #         out_dim=ch_out,
+        #         dropout=1.,
+        #         var_scope_name="res_{}".format(idx_convnet + 1),
+        #         mode=self._mode,
+        #         normalization_type=normalization,
+        #         regularizer=regularizer
+        #     )
+        #     total_res += res_layer(res)
+        #   conv_feats += total_res
+
+        # conv_feats = self.params["activation_fn"](conv_feats)
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 
     outputs = conv_feats
 
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])
+
+    if self._mode == "train":
+      for var in tf.trainable_variables():
+        if "kernel" in var.name or "weight" in var.name:
+          # if var.dtype.base_dtype == tf.float16:
+          #   tf.add_to_collection(
+          #       'REGULARIZATION_FUNCTIONS', (var, regularizer)
+          #   )
+          # else:
+          print("Added regularizer to {}".format(var.name))
+          tf.add_to_collection(
+              ops.GraphKeys.REGULARIZATION_LOSSES, regularizer(var)
+          )
+    outputs = tf.squeeze(outputs, axis=1)
 
     return {
         'outputs': outputs,

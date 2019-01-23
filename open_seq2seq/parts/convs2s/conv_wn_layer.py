@@ -116,7 +116,7 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
             'W',
             shape=[kernel_width, in_dim, conv_out_size],
             # initializer=tf.random_normal_initializer(mean=0, stddev=V_std),
-            # regularizer=self.regularizer,
+            regularizer=self.regularizer,
             trainable=True)
 
       if self.bias_enabled:
@@ -145,8 +145,8 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
     """
     output = input
 
-    if self.mode == "train":
-      output = tf.nn.dropout(output, self.hidden_dropout)
+    # if self.mode == "train":
+    #   output = tf.nn.dropout(output, self.hidden_dropout)
 
     if self.decode_padding:
       output = tf.pad(
@@ -176,7 +176,10 @@ class Conv1DNetworkNormalized(tf.layers.Layer):
           name="batch_norm_" + str(self.layer_id),
           inputs=output,
           training=self.mode == 'train',
-          axis=-1
+          axis=-1,
+          gamma_regularizer=self.regularizer,
+          momentum=0.9,
+          epsilon=1e-3
       )
     if self.apply_batch_norm or self.dilation:
       output = tf.squeeze(output, axis=1)
