@@ -12,7 +12,6 @@ from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv,\
                                                 conv1d_wn_actv, conv2d_wn_actv
 from open_seq2seq.parts.convs2s.conv_wn_layer import Conv1DNetworkNormalized
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
-from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
 from open_seq2seq.parts.convs2s.utils import gated_linear_units
 from .encoder import Encoder
 
@@ -142,6 +141,8 @@ class TDNNEncoder(Encoder):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
       ch_out = convnet_layers[idx_convnet]['num_channels']
+      if self.params["activation_fn"] is gated_linear_units:
+        ch_out = ch_out * 2
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']

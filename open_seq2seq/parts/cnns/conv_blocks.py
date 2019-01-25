@@ -288,7 +288,7 @@ def conv1d_wn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn
       padding=padding,
       dilation_rate=dilation,
       kernel_regularizer=regularizer,
-      use_bias=False,
+      use_bias=True,
       data_format=data_format,
   )
 
