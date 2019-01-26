@@ -151,6 +151,7 @@ class TDNNEncoder(Encoder):
           'dropout_keep_prob', dropout_keep_prob) if training else 1.0
       residual = convnet_layers[idx_convnet].get('residual', False)
       residual_dense = convnet_layers[idx_convnet].get('residual_dense', False)
+      normalization_params['dropout'] = dropout_keep
 
       if residual:
         layer_res = conv_feats

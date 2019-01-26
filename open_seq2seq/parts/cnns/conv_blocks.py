@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from six.moves import range
+import math
 
 import tensorflow as tf
 from .tcn import tcn
@@ -136,7 +137,7 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
   layer = layers_dict[layer_type]
 
   # Ravi's code
-  conv = tf.layers.conv1d(
+  conv = layer(
       name="{}".format(name),
       inputs=inputs,
       filters=filters,
@@ -272,17 +273,25 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 
 def conv1d_wn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
                    strides, padding, regularizer, training, data_format,
-                   dilation):
+                   dilation, dropout):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
 
+  # init_std = math.sqrt(4.0 * dropout / (kernel_size[0] * inputs.get_shape().as_list()[-1]))
+  init_std = math.sqrt(2.6 / (kernel_size[0] * inputs.get_shape().as_list()[-1]))
+  # init_std = math.sqrt(2.6 / ((inputs.get_shape().as_list()[-1] + filters) * kernel_size[0]))
+  # initializer = tf.random_normal_initializer(mean=0, stddev=init_std)
+  initializer = tf.truncated_normal_initializer(mean=0, stddev=init_std)
+  # initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+
   conv = conv1d_wn(
       name="{}".format(name),
       inputs=inputs,
       filters=filters,
+      kernel_initializer=initializer,
       kernel_size=kernel_size,
       strides=strides,
       padding=padding,
