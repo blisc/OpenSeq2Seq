@@ -20,8 +20,8 @@ from open_seq2seq.optimizers.lr_policies import poly_decay
 normalization = replace
 activation = replace
 
-residual = False
-residual_dense = False
+residual = True
+residual_dense = True
 repeat = 3
 dropout_factor = 1.
 training_set = "libri"
