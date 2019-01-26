@@ -73,14 +73,23 @@ class Conv1D_WN(tf.layers.Conv1D):
     self.kernel = tf.reshape(weight, [1, 1, self.filters]) * tf.nn.l2_normalize(
         direction, [0, 1])
     if self.use_bias:
-      self.bias = self.add_weight(
-          name='bias',
-          shape=(self.filters,),
+      bias1 = self.add_weight(
+          name='pass_bias',
+          shape=(int(self.filters/2),),
           initializer=self.bias_initializer,
           regularizer=self.bias_regularizer,
           constraint=self.bias_constraint,
           trainable=True,
           dtype=self.dtype)
+      bias2 = self.add_weight(
+          name='gate_bias',
+          shape=(int(self.filters/2),),
+          initializer=tf.constant_initializer(value=6),
+          regularizer=self.bias_regularizer,
+          constraint=self.bias_constraint,
+          trainable=True,
+          dtype=self.dtype)
+      self.bias = tf.concat([bias1, bias2], 0)
     else:
       self.bias = None
     self.input_spec = InputSpec(ndim=self.rank + 2,
