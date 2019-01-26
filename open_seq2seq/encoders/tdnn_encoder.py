@@ -140,9 +140,9 @@ class TDNNEncoder(Encoder):
     for idx_convnet in range(len(convnet_layers)):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
-      ch_out = convnet_layers[idx_convnet]['num_channels']
+      ch_out_c = ch_out_r = convnet_layers[idx_convnet]['num_channels']
       if self.params["activation_fn"] is gated_linear_units:
-        ch_out = ch_out * 2
+        ch_out_c = ch_out_c * 2
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']
@@ -169,7 +169,7 @@ class TDNNEncoder(Encoder):
             name="conv{}{}".format(
                 idx_convnet + 1, idx_layer + 1),
             inputs=conv_feats,
-            filters=ch_out,
+            filters=ch_out_c,
             kernel_size=kernel_size,
             activation_fn=self.params['activation_fn'],
             strides=strides,
@@ -185,7 +185,7 @@ class TDNNEncoder(Encoder):
           for i, res in enumerate(layer_res):
             res_layer = FeedFowardNetworkNormalized(
                 in_dim=res.get_shape().as_list()[-1],
-                out_dim=int(ch_out/2),
+                out_dim=ch_out_r,
                 dropout=1.,
                 var_scope_name="res_{}_{}".format(idx_convnet + 1, i + 1),
                 mode=self._mode,
