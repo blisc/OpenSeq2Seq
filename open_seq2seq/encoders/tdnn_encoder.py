@@ -2,10 +2,16 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
+import math
 import tensorflow as tf
 
 from .encoder import Encoder
-from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, conv_ln_actv, conv_in_actv, conv_bn_res_bn_actv
+from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, \
+                                                conv_ln_actv, conv_in_actv, \
+                                                conv_bn_res_bn_actv, \
+                                                conv1d_dp_wn_actv_res, conv_res_bn_actv_dp
+from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
+from open_seq2seq.parts.convs2s.utils import gated_linear_units
 
 
 class TDNNEncoder(Encoder):
@@ -24,9 +30,11 @@ class TDNNEncoder(Encoder):
   def get_optional_params():
     return dict(Encoder.get_optional_params(), **{
         'data_format': ['channels_first', 'channels_last'],
-        'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm'],
+        'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm', 'weight_norm'],
         'bn_momentum': float,
         'bn_epsilon': float,
+        'res_before_actv': bool,
+        'wn_bias_init': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -65,7 +73,7 @@ class TDNNEncoder(Encoder):
     * **data_format** (string) --- could be either "channels_first" or
       "channels_last". Defaults to "channels_last".
     * **normalization** --- normalization to use. Accepts [None, 'batch_norm'].
-      Use None if you don't want to use normalization. Defaults to 'batch_norm'.     
+      Use None if you don't want to use normalization. Defaults to 'batch_norm'.
     * **bn_momentum** (float) --- momentum for batch norm. Defaults to 0.90.
     * **bn_epsilon** (float) --- epsilon for batch norm. Defaults to 1e-3.
     """
@@ -105,14 +113,22 @@ class TDNNEncoder(Encoder):
     if normalization is None:
       conv_block = conv_actv
     elif normalization == "batch_norm":
-      conv_block = conv_bn_actv
+      conv_block = conv_res_bn_actv_dp
       normalization_params['bn_momentum'] = self.params.get(
           'bn_momentum', 0.90)
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
+      res_factor = 2
     elif normalization == "layer_norm":
       conv_block = conv_ln_actv
     elif normalization == "instance_norm":
       conv_block = conv_in_actv
+    elif normalization == "weight_norm":
+      conv_block = conv1d_dp_wn_actv_res
+      res_factor = 1
+      # if self.params["activation_fn"] is gated_linear_units:
+      #   normalization_params["bias_init"] = True
+      # else:
+      #   normalization_params["bias_init"] = False
     else:
       raise ValueError("Incorrect normalization")
 
@@ -130,7 +146,10 @@ class TDNNEncoder(Encoder):
     for idx_convnet in range(len(convnet_layers)):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
-      ch_out = convnet_layers[idx_convnet]['num_channels']
+      ch_out_c = ch_out_r = convnet_layers[idx_convnet]['num_channels']
+      if self.params["activation_fn"] is gated_linear_units:
+        ch_out_c = ch_out_c * 2
+        ch_out_r = ch_out_r * res_factor
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']
@@ -141,51 +160,52 @@ class TDNNEncoder(Encoder):
       residual_dense = convnet_layers[idx_convnet].get('residual_dense', False)
 
       if residual:
-        layer_res = conv_feats
+        layer_res = [conv_feats]
         if residual_dense:
-          residual_aggregation.append(layer_res)
+          residual_aggregation.append(layer_res[0])
           layer_res = residual_aggregation
       for idx_layer in range(layer_repeat):
         if padding == "VALID":
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
         else:
           src_length = (src_length + strides[0] - 1) // strides[0]
+        total_res = None
+        scale = 1
         if residual and idx_layer == layer_repeat - 1:
-          conv_feats = conv_bn_res_bn_actv(
-              layer_type=layer_type,
-              name="conv{}{}".format(
-                  idx_convnet + 1, idx_layer + 1),
-              inputs=conv_feats,
-              res_inputs=layer_res,
-              filters=ch_out,
-              kernel_size=kernel_size,
-              activation_fn=self.params['activation_fn'],
-              strides=strides,
-              padding=padding,
-              dilation=dilation,
-              regularizer=regularizer,
-              training=training,
-              data_format=data_format,
-              **normalization_params
-          )
-        else:
-          conv_feats = conv_block(
-              layer_type=layer_type,
-              name="conv{}{}".format(
-                  idx_convnet + 1, idx_layer + 1),
-              inputs=conv_feats,
-              filters=ch_out,
-              kernel_size=kernel_size,
-              activation_fn=self.params['activation_fn'],
-              strides=strides,
-              padding=padding,
-              dilation=dilation,
-              regularizer=regularizer,
-              training=training,
-              data_format=data_format,
-              **normalization_params
-          )
-        conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
+          scale += 1
+          total_res = 0
+          for i, res in enumerate(layer_res):
+            res = tf.layers.conv1d(
+                res,
+                ch_out_r,
+                1,
+                name="conv{}{}/res_{}".format(
+                idx_convnet + 1, idx_layer + 1, i+1),
+                use_bias=False,
+            )
+            total_res += res
+
+        scale = math.sqrt(1/float(scale))
+
+        conv_feats = conv_block(
+            layer_type=layer_type,
+            name="conv{}{}".format(
+                idx_convnet + 1, idx_layer + 1),
+            inputs=conv_feats,
+            res=total_res,
+            filters=ch_out_c,
+            kernel_size=kernel_size,
+            activation_fn=self.params["activation_fn"],
+            strides=strides,
+            padding=padding,
+            dilation=dilation,
+            regularizer=regularizer,
+            training=training,
+            data_format=data_format,
+            dropout_keep=dropout_keep,
+            **normalization_params
+        )
+        conv_feats *= scale
 
     outputs = conv_feats
 

@@ -7,6 +7,7 @@ from six.moves import range
 
 import tensorflow as tf
 from .tcn import tcn
+from .conv1d_wn import conv1d_wn
 
 layers_dict = {
     "conv1d": tf.layers.conv1d,
@@ -84,7 +85,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
       res = tf.squeeze(res, axis=axis)
 
     res_aggregation += res
-  
+
   conv = layer(
       name="{}".format(name),
       inputs=inputs,
@@ -248,4 +249,89 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
   output = sn
   if activation_fn is not None:
     output = activation_fn(output)
+  return output
+
+def conv_res_bn_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
+                        activation_fn, strides, padding, regularizer, training,
+                        data_format, bn_momentum, bn_epsilon, dropout_keep,
+                        dilation=1):
+  """Helper function that applies convolution, batch norm and activation.
+    Args:
+      layer_type: the following types are supported
+        'conv1d', 'conv2d'
+  """
+  layer = layers_dict[layer_type]
+
+  conv = layer(
+      name="{}".format(name),
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=padding,
+      dilation_rate=dilation,
+      kernel_regularizer=regularizer,
+      use_bias=False,
+      data_format=data_format,
+  )
+
+  if res is not None:
+    conv += res
+
+  # trick to make batchnorm work for mixed precision training.
+  # To-Do check if batchnorm works smoothly for >4 dimensional tensors
+  squeeze = False
+  if layer_type == "conv1d":
+    axis = 1 if data_format == 'channels_last' else 2
+    conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
+    squeeze = True
+
+  bn = tf.layers.batch_normalization(
+      name="{}/bn".format(name),
+      inputs=conv,
+      gamma_regularizer=regularizer,
+      training=training,
+      axis=-1 if data_format == 'channels_last' else 1,
+      momentum=bn_momentum,
+      epsilon=bn_epsilon,
+  )
+
+  if squeeze:
+    bn = tf.squeeze(bn, axis=axis)
+
+  output = bn
+  if activation_fn is not None:
+    output = activation_fn(output)
+  output = tf.nn.dropout(x=output, keep_prob=dropout_keep)
+  return output
+
+def conv1d_dp_wn_actv_res(layer_type, name, inputs, res, filters, kernel_size,
+                          activation_fn, strides, padding, regularizer, training,
+                          data_format, dilation, dropout_keep, bias_init=False):
+  """Helper function that applies 1D-convolution, weight norm and activation.
+  """
+
+  dropout = tf.nn.dropout(x=inputs, keep_prob=dropout_keep)
+
+  conv = conv1d_wn(
+      name="{}".format(name),
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=padding,
+      dilation_rate=dilation,
+      kernel_regularizer=regularizer,
+      use_bias=True,
+      data_format=data_format,
+      bias_init=bias_init
+  )
+
+  output = conv
+  if activation_fn is not None:
+    output = activation_fn(output)
+
+  if res is not None:
+    output += res
+
   return output

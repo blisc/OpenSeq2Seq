@@ -6,8 +6,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import tensorflow as tf
 import math
+import tensorflow as tf
 from open_seq2seq.parts.transformer.common import LayerNormalization
 
 
@@ -22,11 +22,14 @@ class FeedFowardNetworkNormalized(tf.layers.Layer):
                mode,
                normalization_type="weight_norm",
                regularizer=None,
-               init_var=None
+               init_var=None,
+               bn_epsilon=0.95,
+               bn_momentum=1e-4
                ):
     """initializes the linear layer.
-    This layer projects from in_dim-dimenstional space to out_dim-dimentional space.
-    It uses weight normalization (Salimans & Kingma, 2016)  w = g * v/2-norm(v)
+    This layer projects from in_dim-dimenstional space to out_dim-dimentional
+    space. It uses weight normalization (Salimans & Kingma, 2016)
+    w = g * v/2-norm(v)
 
     Args:
       in_dim: int last dimension of the inputs
@@ -52,6 +55,8 @@ class FeedFowardNetworkNormalized(tf.layers.Layer):
       self.bias_enabled = False
       self.wn_enabled = False
       self.apply_layer_norm = False
+      self.bn_epsilon = bn_epsilon
+      self.bn_momentum = bn_momentum
     elif normalization_type == "weight_norm":
       self.apply_batch_norm = False
       self.bias_enabled = True
@@ -135,8 +140,8 @@ class FeedFowardNetworkNormalized(tf.layers.Layer):
           inputs=bn_input,
           training=self.mode == 'train',
           axis=-1,
-          momentum=0.95,
-          epsilon=1e-4
+          momentum=self.bn_epsilon,
+          epsilon=self.bn_momentum
       )
       output = tf.squeeze(bn_output, axis=1)
 
