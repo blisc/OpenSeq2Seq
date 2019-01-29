@@ -87,7 +87,7 @@ class Conv1D_WN(tf.layers.Conv1D):
         bias2 = self.add_weight(
             name='gate_bias',
             shape=(int(self.filters/2),),
-            initializer=tf.constant_initializer(value=6),
+            initializer=tf.constant_initializer(value=2),
             regularizer=self.bias_regularizer,
             constraint=self.bias_constraint,
             trainable=True,

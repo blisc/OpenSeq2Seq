@@ -33,7 +33,7 @@ class TDNNEncoder(Encoder):
         'normalization': [None, 'batch_norm', 'layer_norm', 'instance_norm', 'weight_norm'],
         'bn_momentum': float,
         'bn_epsilon': float,
-        'res_before_actv': bool,
+        # 'res_before_actv': bool,
         'wn_bias_init': bool,
     })
 
@@ -125,10 +125,7 @@ class TDNNEncoder(Encoder):
     elif normalization == "weight_norm":
       conv_block = conv1d_dp_wn_actv_res
       res_factor = 1
-      # if self.params["activation_fn"] is gated_linear_units:
-      #   normalization_params["bias_init"] = True
-      # else:
-      #   normalization_params["bias_init"] = False
+      normalization_params["bias_init"] = self.params.get("wn_bias_init", False)
     else:
       raise ValueError("Incorrect normalization")
 
