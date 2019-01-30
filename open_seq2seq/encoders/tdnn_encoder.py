@@ -9,7 +9,7 @@ from .encoder import Encoder
 from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, \
                                                 conv_ln_actv, conv_in_actv, \
                                                 conv_bn_res_bn_actv, \
-                                                conv1d_dp_wn_actv_res, conv_res_bn_actv_dp
+                                                conv1d_dp_wn_actv_res, conv_res_bn_actv_dp, conv_res_ln_actv_dp
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
 from open_seq2seq.parts.convs2s.utils import gated_linear_units
 
@@ -117,9 +117,11 @@ class TDNNEncoder(Encoder):
       normalization_params['bn_momentum'] = self.params.get(
           'bn_momentum', 0.90)
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
+      normalization_params['training'] = training
       res_factor = 2
     elif normalization == "layer_norm":
-      conv_block = conv_ln_actv
+      conv_block = conv_res_ln_actv_dp
+      res_factor = 2
     elif normalization == "instance_norm":
       conv_block = conv_in_actv
     elif normalization == "weight_norm":
@@ -197,7 +199,6 @@ class TDNNEncoder(Encoder):
             padding=padding,
             dilation=dilation,
             regularizer=regularizer,
-            training=training,
             data_format=data_format,
             dropout_keep=dropout_keep,
             **normalization_params
@@ -205,6 +206,9 @@ class TDNNEncoder(Encoder):
         conv_feats *= scale
 
     outputs = conv_feats
+    if normalization == "weight_norm":
+      # Reuse dropout probability from last layer
+      outputs = tf.nn.dropout(x=outputs, keep_prob=dropout_keep)
 
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])

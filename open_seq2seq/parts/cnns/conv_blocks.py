@@ -9,7 +9,7 @@ import tensorflow as tf
 from .tcn import tcn
 from .conv1d_wn import conv1d_wn
 
-layers_dict = {
+LAYERS_DICT = {
     "conv1d": tf.layers.conv1d,
     "conv2d": tf.layers.conv2d,
     "tcn": tcn,
@@ -17,13 +17,13 @@ layers_dict = {
 
 
 def conv_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
-              strides, padding, regularizer, training, data_format, dilation=1):
+              strides, padding, regularizer, data_format, dilation=1):
   """Helper function that applies convolution and activation.
     Args:
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   conv = layer(
       name="{}".format(name),
@@ -47,7 +47,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
                         kernel_size, activation_fn, strides, padding,
                         regularizer, training, data_format, bn_momentum,
                         bn_epsilon, dilation=1):
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   if not isinstance(res_inputs, list):
     res_inputs = [res_inputs]
@@ -133,7 +133,7 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   conv = layer(
       name="{}".format(name),
@@ -176,14 +176,14 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 
 
 def conv_ln_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
-                 strides, padding, regularizer, training, data_format,
+                 strides, padding, regularizer, data_format,
                  dilation=1):
   """Helper function that applies convolution, layer norm and activation.
     Args:
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   conv = layer(
       name="{}".format(name),
@@ -219,14 +219,14 @@ def conv_ln_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 
 
 def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
-                 strides, padding, regularizer, training, data_format,
+                 strides, padding, regularizer, data_format,
                  dilation=1):
   """Helper function that applies convolution, instance norm and activation.
     Args:
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   conv = layer(
       name="{}".format(name),
@@ -260,7 +260,7 @@ def conv_res_bn_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
       layer_type: the following types are supported
         'conv1d', 'conv2d'
   """
-  layer = layers_dict[layer_type]
+  layer = LAYERS_DICT[layer_type]
 
   conv = layer(
       name="{}".format(name),
@@ -305,9 +305,46 @@ def conv_res_bn_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
   output = tf.nn.dropout(x=output, keep_prob=dropout_keep)
   return output
 
+def conv_res_ln_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
+                        activation_fn, strides, padding, regularizer,
+                        data_format, dropout_keep, dilation=1):
+  """Helper function that applies convolution, batch norm and activation.
+    Args:
+      layer_type: the following types are supported
+        'conv1d', 'conv2d'
+  """
+  layer = LAYERS_DICT[layer_type]
+
+  conv = layer(
+      name="{}".format(name),
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=padding,
+      dilation_rate=dilation,
+      kernel_regularizer=regularizer,
+      use_bias=False,
+      data_format=data_format,
+  )
+
+  if res is not None:
+    conv += res
+
+  ln = tf.contrib.layers.layer_norm(
+      inputs=conv,
+  )
+
+  output = ln
+  if activation_fn is not None:
+    output = activation_fn(output)
+  output = tf.nn.dropout(x=output, keep_prob=dropout_keep)
+  return output
+
 def conv1d_dp_wn_actv_res(layer_type, name, inputs, res, filters, kernel_size,
-                          activation_fn, strides, padding, regularizer, training,
-                          data_format, dilation, dropout_keep, bias_init=False):
+                          activation_fn, strides, padding, regularizer,
+                          data_format, dilation, dropout_keep,
+                          bias_init=False):
   """Helper function that applies 1D-convolution, weight norm and activation.
   """
 
