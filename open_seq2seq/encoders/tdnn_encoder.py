@@ -206,9 +206,9 @@ class TDNNEncoder(Encoder):
         conv_feats *= scale
 
     outputs = conv_feats
-    if normalization == "weight_norm":
-      # Reuse dropout probability from last layer
-      outputs = tf.nn.dropout(x=outputs, keep_prob=dropout_keep)
+    # if normalization == "weight_norm":
+    #   # Reuse dropout probability from last layer
+    #   outputs = tf.nn.dropout(x=outputs, keep_prob=dropout_keep)
 
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])
