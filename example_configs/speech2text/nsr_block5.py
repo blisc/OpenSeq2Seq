@@ -2,7 +2,7 @@
 import tensorflow as tf
 from open_seq2seq.models import Speech2Text
 from open_seq2seq.encoders import TDNNEncoder
-from open_seq2seq.parts.convs2s.utils import gated_linear_units
+from open_seq2seq.parts.convs2s.utils import gated_unit
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
@@ -12,13 +12,15 @@ from open_seq2seq.optimizers.lr_policies import poly_decay
 # normalization = "batch_norm"
 # normalization = None
 # normalization = "layer_norm"
-# activation = gated_linear_units
+# activation = gated_unit
+# gate_activation = tf.nn.tanh
 # activation = tf.nn.relu
 # activation = lambda x: tf.minimum(tf.nn.relu(x), 20.0)
 # activation = tf.nn.leaky_relu
 
 normalization = replace
 activation = replace
+gate_activation = None
 
 residual = True
 residual_dense = True
@@ -65,6 +67,7 @@ base_params = {
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
     "logdir": "w2l_log_folder",
+    "num_checkpoints": 2,
 
     "optimizer": "Momentum",
     "optimizer_params": {
@@ -159,6 +162,7 @@ base_params = {
         },
         "normalization": normalization,
         "activation_fn": activation,
+        "gate_activation_fn": gate_activation,
         "data_format": "channels_last",
         "wn_bias_init": False
     },

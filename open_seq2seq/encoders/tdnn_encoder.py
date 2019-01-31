@@ -11,7 +11,7 @@ from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, \
                                                 conv_bn_res_bn_actv, \
                                                 conv1d_dp_wn_actv_res, conv_res_bn_actv_dp, conv_res_ln_actv_dp
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
-from open_seq2seq.parts.convs2s.utils import gated_linear_units
+from open_seq2seq.parts.convs2s.utils import gated_unit
 
 
 class TDNNEncoder(Encoder):
@@ -35,6 +35,7 @@ class TDNNEncoder(Encoder):
         'bn_epsilon': float,
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
+        'gate_activation_fn': None,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -131,6 +132,12 @@ class TDNNEncoder(Encoder):
     else:
       raise ValueError("Incorrect normalization")
 
+    using_gated_unit = False
+    if self.params["activation_fn"] is gated_unit:
+      gate_activation_fn = self.params.get("gate_activation_fn", None)
+      self.params["activation_fn"] = lambda x: gated_unit(x, gate_activation_fn)
+      using_gated_unit = True
+
     conv_inputs = source_sequence
     if data_format == 'channels_last':
       conv_feats = conv_inputs  # B T F
@@ -146,7 +153,7 @@ class TDNNEncoder(Encoder):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
       ch_out_c = ch_out_r = convnet_layers[idx_convnet]['num_channels']
-      if self.params["activation_fn"] is gated_linear_units:
+      if using_gated_unit:
         ch_out_c = ch_out_c * 2
         ch_out_r = ch_out_r * res_factor
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
