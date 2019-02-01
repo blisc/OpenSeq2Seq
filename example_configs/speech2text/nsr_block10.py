@@ -230,7 +230,7 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "syn_ver": 3,
+        # "syn_ver": 3,
     },
 }
 

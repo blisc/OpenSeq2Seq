@@ -9,9 +9,9 @@ from .encoder import Encoder
 from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, \
                                                 conv_ln_actv, conv_in_actv, \
                                                 conv_bn_res_bn_actv, \
-                                                conv1d_dp_wn_actv_res, conv_res_bn_actv_dp, conv_res_ln_actv_dp
+                                                conv1d_wn_actv_res, conv_res_bn_actv, conv_res_ln_actv
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
-from open_seq2seq.parts.convs2s.utils import gated_linear_units
+from open_seq2seq.parts.convs2s.utils import gated_unit
 
 
 class TDNNEncoder(Encoder):
@@ -35,6 +35,7 @@ class TDNNEncoder(Encoder):
         'bn_epsilon': float,
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
+        'gate_activation_fn': None,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -107,29 +108,37 @@ class TDNNEncoder(Encoder):
     dropout_keep_prob = self.params['dropout_keep_prob'] if training else 1.0
     regularizer = self.params.get('regularizer', None)
     data_format = self.params.get('data_format', 'channels_last')
-    normalization = self.params.get('normalization', 'batch_norm')
+    res_normalization = normalization = self.params.get('normalization', 'batch_norm')
 
     normalization_params = {}
-    if normalization is None:
-      conv_block = conv_actv
-    elif normalization == "batch_norm":
-      conv_block = conv_res_bn_actv_dp
+    # if normalization is None:
+    #   conv_block = conv_actv
+    if normalization == "batch_norm":
+      conv_block = conv_res_bn_actv
       normalization_params['bn_momentum'] = self.params.get(
           'bn_momentum', 0.90)
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
       normalization_params['training'] = training
-      res_factor = 2
-    elif normalization == "layer_norm":
-      conv_block = conv_res_ln_actv_dp
-      res_factor = 2
-    elif normalization == "instance_norm":
-      conv_block = conv_in_actv
-    elif normalization == "weight_norm":
-      conv_block = conv1d_dp_wn_actv_res
       res_factor = 1
+      res_normalization = None
+    elif normalization == "layer_norm":
+      conv_block = conv_res_ln_actv
+      res_factor = 1
+      res_normalization = None
+    # elif normalization == "instance_norm":
+    #   conv_block = conv_in_actv
+    elif normalization == "weight_norm":
+      conv_block = conv1d_wn_actv_res
+      res_factor = 0.5
       normalization_params["bias_init"] = self.params.get("wn_bias_init", False)
     else:
       raise ValueError("Incorrect normalization")
+
+    using_gated_unit = False
+    if self.params["activation_fn"] is gated_unit:
+      gate_activation_fn = self.params.get("gate_activation_fn", None)
+      self.params["activation_fn"] = lambda x: gated_unit(x, gate_activation_fn)
+      using_gated_unit = True
 
     conv_inputs = source_sequence
     if data_format == 'channels_last':
@@ -146,9 +155,10 @@ class TDNNEncoder(Encoder):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
       ch_out_c = ch_out_r = convnet_layers[idx_convnet]['num_channels']
-      if self.params["activation_fn"] is gated_linear_units:
-        ch_out_c = ch_out_c * 2
-        ch_out_r = ch_out_r * res_factor
+      if using_gated_unit:
+        ch_out_c = int(ch_out_c * math.sqrt(2))
+        ch_out_c += ch_out_c % 2
+        ch_out_r = int(ch_out_c * res_factor)
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']
@@ -174,15 +184,25 @@ class TDNNEncoder(Encoder):
           scale += 1
           total_res = 0
           for i, res in enumerate(layer_res):
-            res = tf.layers.conv1d(
-                res,
-                ch_out_r,
-                1,
-                name="conv{}{}/res_{}".format(
-                idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=False,
+            # res = tf.layers.conv1d(
+            #     res,
+            #     ch_out_r,
+            #     1,
+            #     name="conv{}{}/res_{}".format(
+            #     idx_convnet + 1, idx_layer + 1, i+1),
+            #     use_bias=False,
+            # )
+            # total_res += res
+            res_layer = FeedFowardNetworkNormalized(
+                in_dim=res.get_shape().as_list()[-1],
+                out_dim=ch_out_r,
+                dropout=1.,
+                var_scope_name="conv{}{}/res_{}".format(idx_convnet + 1, idx_layer + 1, i + 1),
+                mode=self._mode,
+                normalization_type=res_normalization,
+                regularizer=regularizer
             )
-            total_res += res
+            total_res += res_layer(res)
 
         scale = math.sqrt(1/float(scale))
 
@@ -200,15 +220,17 @@ class TDNNEncoder(Encoder):
             dilation=dilation,
             regularizer=regularizer,
             data_format=data_format,
-            dropout_keep=dropout_keep,
             **normalization_params
         )
-        conv_feats *= scale
+
+        if normalization == "weight_norm":
+          conv_feats *= scale
+        conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 
     outputs = conv_feats
-    if normalization == "weight_norm":
-      # Reuse dropout probability from last layer
-      outputs = tf.nn.dropout(x=outputs, keep_prob=dropout_keep)
+    # if normalization == "weight_norm":
+    #   # Reuse dropout probability from last layer
+    #   outputs = tf.nn.dropout(x=outputs, keep_prob=dropout_keep)
 
     if data_format == 'channels_first':
       outputs = tf.transpose(outputs, [0, 2, 1])

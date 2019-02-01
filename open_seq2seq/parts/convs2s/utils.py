@@ -4,7 +4,7 @@ Inspired from https://github.com/tobyyouup/conv_seq2seq"""
 import tensorflow as tf
 
 
-def gated_linear_units(inputs):
+def gated_unit(inputs, actv_fn):
   """Gated Linear Units (GLU) on x.
 
   Args:
@@ -15,6 +15,11 @@ def gated_linear_units(inputs):
   input_shape = inputs.get_shape().as_list()
   assert len(input_shape) == 3
   input_pass = inputs[:, :, 0:int(input_shape[2] / 2)]
+  if actv_fn:
+    input_pass = actv_fn(input_pass)
   input_gate = inputs[:, :, int(input_shape[2] / 2):]
   input_gate = tf.sigmoid(input_gate)
   return tf.multiply(input_pass, input_gate)
+
+def gated_linear_units(inputs):
+  return gated_unit(inputs, None)

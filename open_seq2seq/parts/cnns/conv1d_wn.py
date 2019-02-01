@@ -72,8 +72,10 @@ class Conv1D_WN(tf.layers.Conv1D):
         constraint=self.kernel_constraint,
         trainable=True,
         dtype=self.dtype)
+    # Try to see if this avoids numerical instability
     self.kernel = tf.reshape(weight, [1, 1, self.filters]) * tf.nn.l2_normalize(
         direction, [0, 1])
+         # direction, epsilon=1e-6)
     if self.use_bias:
       if self.bias_init:
         bias1 = self.add_weight(
