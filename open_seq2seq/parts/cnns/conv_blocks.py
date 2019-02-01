@@ -251,10 +251,10 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
     output = activation_fn(output)
   return output
 
-def conv_res_bn_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
-                        activation_fn, strides, padding, regularizer, training,
-                        data_format, bn_momentum, bn_epsilon, dropout_keep,
-                        dilation=1):
+def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
+                     activation_fn, strides, padding, regularizer, training,
+                     data_format, bn_momentum, bn_epsilon,
+                     dilation=1):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -302,12 +302,11 @@ def conv_res_bn_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
   output = bn
   if activation_fn is not None:
     output = activation_fn(output)
-  output = tf.nn.dropout(x=output, keep_prob=dropout_keep)
   return output
 
-def conv_res_ln_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
-                        activation_fn, strides, padding, regularizer,
-                        data_format, dropout_keep, dilation=1):
+def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
+                     activation_fn, strides, padding, regularizer,
+                     data_format, dilation=1):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -338,17 +337,13 @@ def conv_res_ln_actv_dp(layer_type, name, inputs, res, filters, kernel_size,
   output = ln
   if activation_fn is not None:
     output = activation_fn(output)
-  output = tf.nn.dropout(x=output, keep_prob=dropout_keep)
   return output
 
-def conv1d_dp_wn_actv_res(layer_type, name, inputs, res, filters, kernel_size,
-                          activation_fn, strides, padding, regularizer,
-                          data_format, dilation, dropout_keep,
-                          bias_init=False):
+def conv1d_wn_actv_res(layer_type, name, inputs, res, filters, kernel_size,
+                       activation_fn, strides, padding, regularizer,
+                       data_format, dilation, bias_init=False):
   """Helper function that applies 1D-convolution, weight norm and activation.
   """
-
-  dropout = tf.nn.dropout(x=inputs, keep_prob=dropout_keep)
 
   conv = conv1d_wn(
       name="{}".format(name),
