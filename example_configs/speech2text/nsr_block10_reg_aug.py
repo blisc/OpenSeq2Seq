@@ -45,9 +45,9 @@ elif training_set == "combined_33_66":
 data_aug = {}
 if data_aug_enable == True:
     data_aug = {
-            'time_stretch_ratio': 0.05,
-            'noise_level_min': -90,
-            'noise_level_max': -60}
+            'time_stretch_ratio': 0,
+            'noise_level_min': 0,
+            'noise_level_max': 0}
 
 base_model = Speech2Text
 
@@ -230,7 +230,8 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        # "syn_ver": 3,
+        "syn_enable": True,
+        "syn_subdirs": ["1_50", "2_44", "3_47", "50", "46", "48"],
     },
 }
 
