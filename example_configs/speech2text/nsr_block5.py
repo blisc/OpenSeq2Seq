@@ -60,7 +60,7 @@ base_params = {
     "num_epochs": 50,
 
     "num_gpus": 8,
-    "batch_size_per_gpu": 32,
+    "batch_size_per_gpu": 64,
     "iter_size": 1,
 
     "save_summaries_steps": 100,
