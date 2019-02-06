@@ -36,6 +36,7 @@ class TDNNEncoder(Encoder):
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
         'gate_activation_fn': None,
+        'bn_inputs': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -139,6 +140,17 @@ class TDNNEncoder(Encoder):
       gate_activation_fn = self.params.get("gate_activation_fn", None)
       self.params["activation_fn"] = lambda x: gated_unit(x, gate_activation_fn)
       using_gated_unit = True
+
+    if self.params.get("bn_inputs", False):
+      source_sequence = tf.layers.batch_normalization(
+          name="input_bn",
+          inputs=source_sequence,
+          gamma_regularizer=regularizer,
+          training=training,
+          axis=-1 if data_format == 'channels_last' else 1,
+          momentum=self.params.get('bn_momentum', 0.90),
+          epsilon=self.params.get('bn_epsilon', 1e-3),
+      )
 
     conv_inputs = source_sequence
     if data_format == 'channels_last':

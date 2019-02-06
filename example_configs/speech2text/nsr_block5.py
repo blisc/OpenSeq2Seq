@@ -9,21 +9,21 @@ from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
 # normalization = "weight_norm"
-# normalization = "batch_norm"
+normalization = "batch_norm"
 # normalization = None
 # normalization = "layer_norm"
 # activation = gated_unit
 # gate_activation = tf.nn.tanh
-# activation = tf.nn.relu
+activation = tf.nn.relu
 # activation = lambda x: tf.minimum(tf.nn.relu(x), 20.0)
 # activation = tf.nn.leaky_relu
 
-normalization = replace
-activation = replace
+# normalization = replace
+# activation = replace
 gate_activation = None
 
 residual = True
-residual_dense = True
+residual_dense = False
 repeat = 3
 dropout_factor = 1.
 training_set = "libri"
@@ -43,12 +43,14 @@ elif training_set == "combined":
 elif training_set == "syn":
     dataset_files = ["/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
 
-data_aug = {}
+data_aug = {
+    "normalize": True,
+    "speed_perturb_enable": False
+}
 if data_aug_enable == True:
-    data_aug = {
-            'time_stretch_ratio': 0.05,
-            'noise_level_min': -90,
-            'noise_level_max': -60}
+    data_aug["speed_perturb_enable"] = True
+    data_aug["speed_perturb_uniform"] = False
+    data_aug["speed_perturb_options"] = [0.9, 1.0, 1.1]
 
 base_model = Speech2Text
 
@@ -164,7 +166,8 @@ base_params = {
         "activation_fn": activation,
         "gate_activation_fn": gate_activation,
         "data_format": "channels_last",
-        "wn_bias_init": False
+        "wn_bias_init": False,
+        "bn_input": False
     },
 
     "decoder": FullyConnectedCTCDecoder,

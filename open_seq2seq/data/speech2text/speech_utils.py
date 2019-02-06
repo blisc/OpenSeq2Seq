@@ -216,10 +216,13 @@ def augment_audio_signal(signal, sample_freq, augmentation):
   """
   signal_float = normalize_signal(signal.astype(np.float32))
 
-  if augmentation['time_stretch_ratio'] > 0:
+  if augmentation.get('speed_perturb_enable', False):
     # time stretch (might be slow)
-    stretch_amount = 1.0 + (2.0 * np.random.rand() - 1.0) * \
-                     augmentation['time_stretch_ratio']
+    if augmentation.get('speed_perturb_uniform', True):
+      stretch_amount = 1.0 + (2.0 * np.random.rand() - 1.0) * \
+                       augmentation['speed_perturb_range']
+    else:
+      stretch_amount = np.random.choice(augmentation['speed_perturb_options'])
     signal_float = rs.resample(
         signal_float,
         sample_freq,
@@ -228,10 +231,12 @@ def augment_audio_signal(signal, sample_freq, augmentation):
     )
 
   # noise
-  noise_level_db = np.random.randint(low=augmentation['noise_level_min'],
-                                     high=augmentation['noise_level_max'])
-  signal_float += np.random.randn(signal_float.shape[0]) * \
-                  10.0 ** (noise_level_db / 20.0)
+  if augmentation.get('noise_level_min', None) and augmentation.get('noise_level_max', None):
+    noise_level_db = np.random.randint(low=augmentation['noise_level_min'],
+                                       high=augmentation['noise_level_max'])
+    signal_float += np.random.randn(signal_float.shape[0]) * \
+                    10.0 ** (noise_level_db / 20.0)
+
 
   return (normalize_signal(signal_float) * 32767.0).astype(np.int16)
 
@@ -261,15 +266,6 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
     audio_duration (float): duration of the signal in seconds
   """
   if augmentation:
-    if 'time_stretch_ratio' not in augmentation:
-      raise ValueError('time_stretch_ratio has to be included in augmentation '
-                       'when augmentation it is not None')
-    if 'noise_level_min' not in augmentation:
-      raise ValueError('noise_level_min has to be included in augmentation '
-                       'when augmentation it is not None')
-    if 'noise_level_max' not in augmentation:
-      raise ValueError('noise_level_max has to be included in augmentation '
-                       'when augmentation it is not None')
     signal = augment_audio_signal(signal, sample_freq, augmentation)
   else:
     signal = (normalize_signal(signal.astype(np.float32)) * 32767.0).astype(
@@ -331,7 +327,8 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
 
   if pad_to > 0:
     assert features.shape[0] % pad_to == 0
-  mean = np.mean(features)
-  std_dev = np.std(features)
-  features = (features - mean) / std_dev
+  if augmentation.get("normalize", True):
+    mean = np.mean(features)
+    std_dev = np.std(features)
+    features = (features - mean) / std_dev
   return features, audio_duration
