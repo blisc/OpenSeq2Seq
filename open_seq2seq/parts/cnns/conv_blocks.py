@@ -332,6 +332,7 @@ def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
 
   ln = tf.contrib.layers.layer_norm(
       inputs=conv,
+      begin_norm_axis=2,
   )
 
   output = ln
