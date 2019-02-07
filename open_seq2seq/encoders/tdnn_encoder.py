@@ -170,13 +170,18 @@ class TDNNEncoder(Encoder):
       dropout_keep = convnet_layers[idx_convnet].get(
           'dropout_keep_prob', dropout_keep_prob) if training else 1.0
       residual = convnet_layers[idx_convnet].get('residual', False)
-      residual_dense = convnet_layers[idx_convnet].get('residual_dense', False)
+      final_skip = convnet_layers[idx_convnet].get('final_skip', False)
 
+      # If residual is "res", "dense", or "skip"
       if residual:
+        # Normal "res" - only skips one convolution block
         layer_res = [conv_feats]
-        if residual_dense:
+        # For "dense" or "skip", we want to aggregate residual connections
+        if residual != "res":
           residual_aggregation.append(layer_res[0])
-          layer_res = residual_aggregation
+          # For "dense", we want to pass every residual to current block
+          if residual != "skip":
+            layer_res = residual_aggregation
       for idx_layer in range(layer_repeat):
         if padding == "VALID":
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
@@ -184,19 +189,23 @@ class TDNNEncoder(Encoder):
           src_length = (src_length + strides[0] - 1) // strides[0]
         total_res = None
         scale = 1
-        if residual and idx_layer == layer_repeat - 1:
+        if residual == "skip" and final_skip and idx_layer == layer_repeat - 1:
+          total_res = 0
+          for i, res in enumerate(residual_aggregation):
+            res_layer = FeedFowardNetworkNormalized(
+                in_dim=res.get_shape().as_list()[-1],
+                out_dim=ch_out_r,
+                dropout=1.,
+                var_scope_name="conv{}{}/res_{}".format(idx_convnet + 1, idx_layer + 1, i + 1),
+                mode=self._mode,
+                normalization_type=res_normalization,
+                regularizer=regularizer
+            )
+            total_res += res_layer(res)
+        elif residual and idx_layer == layer_repeat - 1:
           scale += 1
           total_res = 0
           for i, res in enumerate(layer_res):
-            # res = tf.layers.conv1d(
-            #     res,
-            #     ch_out_r,
-            #     1,
-            #     name="conv{}{}/res_{}".format(
-            #     idx_convnet + 1, idx_layer + 1, i+1),
-            #     use_bias=False,
-            # )
-            # total_res += res
             res_layer = FeedFowardNetworkNormalized(
                 in_dim=res.get_shape().as_list()[-1],
                 out_dim=ch_out_r,

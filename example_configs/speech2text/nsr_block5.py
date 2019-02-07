@@ -8,22 +8,11 @@ from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
-# normalization = "weight_norm"
-# normalization = "batch_norm"
-# normalization = None
-# normalization = "layer_norm"
-# activation = gated_unit
-# gate_activation = tf.nn.tanh
-# activation = tf.nn.relu
-# activation = lambda x: tf.minimum(tf.nn.relu(x), 20.0)
-# activation = tf.nn.leaky_relu
-
-normalization = replace
-activation = replace
+normalization = "batch_norm"
+activation = tf.nn.relu
 gate_activation = None
 
-residual = True
-residual_dense = True
+residual = False # False, "res", "dense", "skip"
 repeat = 3
 dropout_factor = 1.
 training_set = "libri"
@@ -110,35 +99,35 @@ base_params = {
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual, "final_skip": True
             },
             {
                 "type": "conv1d", "repeat": 1,
