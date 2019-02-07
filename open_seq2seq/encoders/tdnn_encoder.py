@@ -6,10 +6,11 @@ import math
 import tensorflow as tf
 
 from .encoder import Encoder
-from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv, \
-                                                conv_ln_actv, conv_in_actv, \
-                                                conv_bn_res_bn_actv, \
-                                                conv1d_wn_actv_res, conv_res_bn_actv, conv_res_ln_actv
+from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv,\
+                                                conv_ln_actv, conv_in_actv,\
+                                                conv_bn_res_bn_actv,\
+                                                conv1d_wn_actv_res, conv_res_bn_actv, conv_res_ln_actv,\
+                                                conv_res_actv
 from open_seq2seq.parts.convs2s.ffn_wn_layer import FeedFowardNetworkNormalized
 from open_seq2seq.parts.convs2s.utils import gated_unit
 
@@ -131,6 +132,9 @@ class TDNNEncoder(Encoder):
       conv_block = conv1d_wn_actv_res
       res_factor = 0.5
       normalization_params["bias_init"] = self.params.get("wn_bias_init", False)
+    elif normalization == None:
+      conv_block = conv_res_actv
+      res_factor = 1
     else:
       raise ValueError("Incorrect normalization")
 

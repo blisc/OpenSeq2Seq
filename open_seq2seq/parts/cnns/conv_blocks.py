@@ -304,6 +304,37 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
     output = activation_fn(output)
   return output
 
+def conv_res_actv(layer_type, name, inputs, res, filters, kernel_size,
+                  activation_fn, strides, padding, regularizer, data_format,
+                  dilation=1):
+  """Helper function that applies convolution and activation.
+    Args:
+      layer_type: the following types are supported
+        'conv1d', 'conv2d'
+  """
+  layer = LAYERS_DICT[layer_type]
+
+  conv = layer(
+      name="{}".format(name),
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=padding,
+      dilation_rate=dilation,
+      kernel_regularizer=regularizer,
+      use_bias=False,
+      data_format=data_format,
+  )
+
+  if res is not None:
+    conv += res
+
+  output = conv
+  if activation_fn is not None:
+    output = activation_fn(output)
+  return output
+
 def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer,
                      data_format, dilation=1):
