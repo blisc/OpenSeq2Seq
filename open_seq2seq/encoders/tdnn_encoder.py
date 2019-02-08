@@ -243,7 +243,7 @@ class TDNNEncoder(Encoder):
             **normalization_params
         )
 
-        if normalization == "weight_norm":
+        if normalization == "weight_norm" or normalization is None:
           conv_feats *= scale
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 
