@@ -8,6 +8,7 @@ from six.moves import range
 import tensorflow as tf
 from .tcn import tcn
 from .conv1d_wn import conv1d_wn
+from ..transformer.common import SequenceLayerNormalization
 
 LAYERS_DICT = {
     "conv1d": tf.layers.conv1d,
@@ -337,7 +338,7 @@ def conv_res_actv(layer_type, name, inputs, res, filters, kernel_size,
 
 def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer,
-                     data_format, dilation=1):
+                     data_format, use_mask=False, mask=None, dilation=1):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -361,10 +362,14 @@ def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
   if res is not None:
     conv += res
 
-  ln = tf.contrib.layers.layer_norm(
-      inputs=conv,
-      begin_norm_axis=2,
-  )
+  if use_mask:
+    layer_norm_layer = SequenceLayerNormalization(conv.get_shape().as_list()[-1])
+    ln = layer_norm_layer(conv, mask)
+  else:
+    ln = tf.contrib.layers.layer_norm(
+        inputs=conv,
+        begin_norm_axis=2,
+    )
 
   output = ln
   if activation_fn is not None:
