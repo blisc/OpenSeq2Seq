@@ -55,7 +55,7 @@ class SequenceLayerNormalization(tf.layers.Layer):
     x = tf.cast(x=x, dtype=tf.float32)
 
     x_masked = x * mask
-    mask_count = tf.reduce_sum(mask, axis=[1, 2], keepdims=True)
+    mask_count = tf.reduce_sum(mask, axis=[1, 2], keepdims=True) * x.get_shape().as_list()[-1]
     mean = tf.reduce_sum(x_masked, axis=[1,2], keepdims=True) / mask_count
     variance = tf.reduce_sum(tf.square(x - mean) * mask, axis=[1,2], keepdims=True) / mask_count
 
