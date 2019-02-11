@@ -2,17 +2,21 @@
 import tensorflow as tf
 from open_seq2seq.models import Speech2Text
 from open_seq2seq.encoders import TDNNEncoder
+from open_seq2seq.parts.convs2s.utils import gated_unit
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
 from open_seq2seq.optimizers.lr_policies import poly_decay
 
-residual = True
-residual_dense = True
-repeat_1 = 5
-repeat_2 = 5
+normalization = "batch_norm"
+activation = tf.nn.relu
+gate_activation = None
+
+residual = False # False, "res", "dense", "skip"
+repeat_1 = 3
+repeat_2 = 3
 dropout_factor = 1.
-training_set = "combined"
+training_set = "libri"
 data_aug_enable = False
 
 if training_set == "libri":
@@ -54,10 +58,10 @@ base_model = Speech2Text
 base_params = {
     "random_seed": 0,
     "use_horovod": True,
-    "num_epochs": 200,
+    "num_epochs": 50,
 
     "num_gpus": 8,
-    "batch_size_per_gpu": 128,
+    "batch_size_per_gpu": 64,
     "iter_size": 1,
 
     "save_summaries_steps": 100,
@@ -65,7 +69,8 @@ base_params = {
     "print_samples_steps": 2200,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
-    "logdir": "w2l_log_folder",
+    "logdir": "nsr_log_folder",
+    "num_checkpoints": 2,
 
     "optimizer": "Momentum",
     "optimizer_params": {
@@ -106,70 +111,70 @@ base_params = {
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [11], "stride": [1],
                 "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [13], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [17], "stride": [1],
                 "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [21], "stride": [1],
                 "num_channels": 640, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [25], "stride": [1],
                 "num_channels": 768, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
-                "residual": residual, "residual_dense": residual_dense
+                "residual": residual, "final_skip": True
             },
             {
                 "type": "conv1d", "repeat": 1,
@@ -191,13 +196,11 @@ base_params = {
         "initializer_params": {
             'uniform': False,
         },
-        "normalization": "batch_norm",
-        "activation_fn": lambda x: tf.minimum(tf.nn.relu(x), 20.0),
+        "normalization": normalization,
+        "activation_fn": activation,
+        "gate_activation_fn": gate_activation,
         "data_format": "channels_last",
-
-        # "enable_rnn": False,
-        # "rnn_cell_size": 256,
-        # "rnn_layers": 1
+        "wn_bias_init": False
     },
 
     "decoder": FullyConnectedCTCDecoder,
