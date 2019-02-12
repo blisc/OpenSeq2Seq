@@ -31,6 +31,9 @@ elif training_set == "combined-cb":
             "/data/librispeech/librivox-train-clean-100.csv",
             "/data/librispeech/librivox-train-clean-360.csv",
             "/data/librispeech/librivox-train-other-500.csv",
+            "/data/librispeech/librivox-train-clean-100.csv",
+            "/data/librispeech/librivox-train-clean-360.csv",
+            "/data/librispeech/librivox-train-other-500.csv",
             "/data/speech/childbooks-syn/synthetic_data.csv"]
 elif training_set == "MAILABS_LibriSpeech":
     dataset_files = [
