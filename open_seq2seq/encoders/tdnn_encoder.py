@@ -126,6 +126,13 @@ class TDNNEncoder(Encoder):
       conv_block = conv_res_ln_actv
       res_factor = 1
       res_normalization = None
+      mask = tf.sequence_mask(
+          lengths=src_length, maxlen=tf.reduce_max(src_length),
+          dtype=tf.float32
+      )
+      mask = tf.expand_dims(mask, 2)
+      normalization_params['use_mask'] = True
+      normalization_params['mask'] = mask
     # elif normalization == "instance_norm":
     #   conv_block = conv_in_actv
     elif normalization == "weight_norm":
@@ -171,6 +178,14 @@ class TDNNEncoder(Encoder):
           'dropout_keep_prob', dropout_keep_prob) if training else 1.0
       residual = convnet_layers[idx_convnet].get('residual', False)
       final_skip = convnet_layers[idx_convnet].get('final_skip', False)
+      if strides[0] > 1 and normalization == "layer_norm":
+        mask = tf.sequence_mask(
+            lengths=src_length/strides[0],
+            maxlen=tf.reduce_max(src_length/strides[0]),
+            dtype=tf.float32
+        )
+        mask = tf.expand_dims(mask, 2)
+        normalization_params['mask'] = mask
 
       # If residual is "res", "dense", or "skip"
       if residual:
@@ -192,16 +207,16 @@ class TDNNEncoder(Encoder):
         if residual == "skip" and final_skip and idx_layer == layer_repeat - 1:
           total_res = 0
           for i, res in enumerate(residual_aggregation):
-            res_layer = FeedFowardNetworkNormalized(
-                in_dim=res.get_shape().as_list()[-1],
-                out_dim=ch_out_r,
-                dropout=1.,
-                var_scope_name="conv{}{}/res_{}".format(idx_convnet + 1, idx_layer + 1, i + 1),
-                mode=self._mode,
-                normalization_type=res_normalization,
-                regularizer=regularizer
+            res = tf.layers.conv1d(
+                res,
+                ch_out_r,
+                1,
+                name="conv{}{}/res_{}".format(
+                idx_convnet + 1, idx_layer + 1, i+1),
+                use_bias=False,
+                kernel_regularizer=regularizer,
             )
-            total_res += res_layer(res)
+            total_res += res
         elif residual and idx_layer == layer_repeat - 1:
           scale += 1
           total_res = 0

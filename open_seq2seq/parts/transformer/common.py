@@ -17,12 +17,14 @@ class LayerNormalization(tf.layers.Layer):
     self.hidden_size = hidden_size
 
   def build(self, _):
-    self.scale = tf.get_variable("layer_norm_scale", [self.hidden_size],
-                                 initializer=tf.ones_initializer(dtype=tf.float32),
-                                 dtype=tf.float32)
-    self.bias = tf.get_variable("layer_norm_bias", [self.hidden_size],
-                                initializer=tf.zeros_initializer(dtype=tf.float32),
-                                dtype=tf.float32)
+    self.scale = tf.get_variable(
+        "layer_norm_scale", [self.hidden_size],
+        initializer=tf.ones_initializer(dtype=tf.float32),
+        dtype=tf.float32)
+    self.bias = tf.get_variable(
+        "layer_norm_bias", [self.hidden_size],
+        initializer=tf.zeros_initializer(dtype=tf.float32),
+        dtype=tf.float32)
     self.built = True
 
   def call(self, x, epsilon=1e-6):
@@ -34,6 +36,34 @@ class LayerNormalization(tf.layers.Layer):
     result = norm_x * self.scale + self.bias
     return tf.cast(x=result, dtype=dtype)
 
+class SequenceLayerNormalization(tf.layers.Layer):
+  """Applies layer normalization."""
+
+  def __init__(self, hidden_size):
+    super(SequenceLayerNormalization, self).__init__()
+    self.hidden_size = hidden_size
+
+  def build(self, _):
+    self.scale = tf.get_variable(
+        "layer_norm_scale", [self.hidden_size],
+        initializer=tf.ones_initializer(dtype=tf.float32),
+        dtype=tf.float32)
+    self.bias = tf.get_variable(
+        "layer_norm_bias", [self.hidden_size],
+        initializer=tf.zeros_initializer(dtype=tf.float32),
+        dtype=tf.float32)
+    self.built = True
+
+  def call(self, x, mask, epsilon=1e-6):
+    dtype = x.dtype
+    x = tf.cast(x=x, dtype=tf.float32)
+
+    mask_count = tf.reduce_sum(mask, axis=[1, 2], keepdims=True) * x.get_shape().as_list()[-1]
+    mean = tf.reduce_sum(x * mask, axis=[1, 2], keepdims=True) / mask_count
+    variance = tf.reduce_sum(tf.square(x - mean) * mask, axis=[1, 2], keepdims=True) / mask_count
+    norm_x = (x - mean) * tf.rsqrt(variance + epsilon)
+    result = norm_x * self.scale + self.bias
+    return tf.cast(x=result, dtype=dtype)
 
 class PrePostProcessingWrapper(object):
   """Wrapper class that applies layer pre-processing and post-processing."""
