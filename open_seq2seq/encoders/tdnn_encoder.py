@@ -221,16 +221,16 @@ class TDNNEncoder(Encoder):
           scale += 1
           total_res = 0
           for i, res in enumerate(layer_res):
-            res_layer = FeedFowardNetworkNormalized(
-                in_dim=res.get_shape().as_list()[-1],
-                out_dim=ch_out_r,
-                dropout=1.,
-                var_scope_name="conv{}{}/res_{}".format(idx_convnet + 1, idx_layer + 1, i + 1),
-                mode=self._mode,
-                normalization_type=res_normalization,
-                regularizer=regularizer
+            res = tf.layers.conv1d(
+                res,
+                ch_out_r,
+                1,
+                name="conv{}{}/res_{}".format(
+                idx_convnet + 1, idx_layer + 1, i+1),
+                use_bias=False,
+                kernel_regularizer=regularizer,
             )
-            total_res += res_layer(res)
+            total_res += res
 
         scale = math.sqrt(1/float(scale))
 
