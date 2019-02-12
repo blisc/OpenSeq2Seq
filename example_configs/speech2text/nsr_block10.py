@@ -72,6 +72,7 @@ base_params = {
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
     "logdir": "w2l_log_folder",
+    "num_checkpoints": 2,
 
     "optimizer": "Momentum",
     "optimizer_params": {
@@ -236,6 +237,8 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
+        "syn_enable": True,
+        "syn_subdirs": ["v2"],
         # "syn_ver": 3,
     },
 }
