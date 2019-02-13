@@ -214,7 +214,7 @@ class TDNNEncoder(Encoder):
                 name="conv{}{}/res_{}".format(
                 idx_convnet + 1, idx_layer + 1, i+1),
                 use_bias=False,
-                kernel_regularizer=regularizer,
+                # kernel_regularizer=regularizer,
             )
             total_res += res
         elif residual and idx_layer == layer_repeat - 1:
@@ -228,7 +228,7 @@ class TDNNEncoder(Encoder):
                 name="conv{}{}/res_{}".format(
                 idx_convnet + 1, idx_layer + 1, i+1),
                 use_bias=False,
-                kernel_regularizer=regularizer,
+                # kernel_regularizer=regularizer,
             )
             total_res += res
 
