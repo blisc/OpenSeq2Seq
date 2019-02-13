@@ -167,8 +167,8 @@ class TDNNEncoder(Encoder):
       layer_repeat = convnet_layers[idx_convnet]['repeat']
       ch_out_c = ch_out_r = convnet_layers[idx_convnet]['num_channels']
       if using_gated_unit:
-        ch_out_c = int(ch_out_c * math.sqrt(2))
-        ch_out_c += ch_out_c % 2
+        # ch_out_c = int(ch_out_c * math.sqrt(2))
+        # ch_out_c += ch_out_c % 2
         ch_out_r = int(ch_out_c * res_factor)
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
