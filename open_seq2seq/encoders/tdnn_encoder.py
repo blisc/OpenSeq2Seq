@@ -115,6 +115,13 @@ class TDNNEncoder(Encoder):
     normalization_params = {}
     # if normalization is None:
     #   conv_block = conv_actv
+    if self.params.get('use_mask', False) and (normalization == "batch_norm" or normalization == "layer_norm"):
+      mask = tf.sequence_mask(
+          lengths=src_length, maxlen=tf.reduce_max(src_length),
+          dtype=tf.float32
+      )
+      mask = tf.expand_dims(mask, 2)
+      normalization_params['mask'] = mask
     if normalization == "batch_norm":
       conv_block = conv_res_bn_actv
       normalization_params['bn_momentum'] = self.params.get(
@@ -127,14 +134,6 @@ class TDNNEncoder(Encoder):
       conv_block = conv_res_ln_actv
       res_factor = 1
       res_normalization = None
-      if self.params.get('use_mask', False):
-        mask = tf.sequence_mask(
-            lengths=src_length, maxlen=tf.reduce_max(src_length),
-            dtype=tf.float32
-        )
-        mask = tf.expand_dims(mask, 2)
-        normalization_params['use_mask'] = True
-        normalization_params['mask'] = mask
     # elif normalization == "instance_norm":
     #   conv_block = conv_in_actv
     elif normalization == "weight_norm":
@@ -180,7 +179,7 @@ class TDNNEncoder(Encoder):
           'dropout_keep_prob', dropout_keep_prob) if training else 1.0
       residual = convnet_layers[idx_convnet].get('residual', False)
       residual_dense = convnet_layers[idx_convnet].get('residual_dense', False)
-      if strides[0] > 1 and self.params.get("use_mask", False) and normalization == "layer_norm":
+      if strides[0] > 1 and normalization_params.get("mask", None) is not None:
         mask = tf.sequence_mask(
             lengths=src_length/2, maxlen=tf.reduce_max(src_length/2),
             dtype=tf.float32

@@ -8,6 +8,7 @@ from six.moves import range
 import tensorflow as tf
 from .tcn import tcn
 from .conv1d_wn import conv1d_wn
+from .sequencebatchnorm import masked_batch_normalization
 from ..transformer.common import SequenceLayerNormalization
 
 LAYERS_DICT = {
@@ -255,7 +256,7 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer, training,
                      data_format, bn_momentum, bn_epsilon,
-                     dilation=1):
+                     dilation=1, mask=None):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -287,15 +288,28 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
     conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
     squeeze = True
 
-  bn = tf.layers.batch_normalization(
-      name="{}/bn".format(name),
-      inputs=conv,
-      gamma_regularizer=regularizer,
-      training=training,
-      axis=-1 if data_format == 'channels_last' else 1,
-      momentum=bn_momentum,
-      epsilon=bn_epsilon,
-  )
+  if mask is not None:
+    bn = masked_batch_normalization(
+        name="{}/bn".format(name),
+        inputs=conv,
+        gamma_regularizer=regularizer,
+        training=training,
+        axis=-1 if data_format == 'channels_last' else 1,
+        momentum=bn_momentum,
+        epsilon=bn_epsilon,
+        mask=mask,
+        fused=False
+    )
+  else:
+    bn = tf.layers.batch_normalization(
+        name="{}/bn".format(name),
+        inputs=conv,
+        gamma_regularizer=regularizer,
+        training=training,
+        axis=-1 if data_format == 'channels_last' else 1,
+        momentum=bn_momentum,
+        epsilon=bn_epsilon,
+    )
 
   if squeeze:
     bn = tf.squeeze(bn, axis=axis)
@@ -338,7 +352,7 @@ def conv_res_actv(layer_type, name, inputs, res, filters, kernel_size,
 
 def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer,
-                     data_format, use_mask=False, mask=None, dilation=1):
+                     data_format, mask=None, dilation=1):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -362,13 +376,13 @@ def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
   if res is not None:
     conv += res
 
-  if use_mask:
+  if mask is not None:
     layer_norm_layer = SequenceLayerNormalization(conv.get_shape().as_list()[-1])
     ln = layer_norm_layer(conv, mask)
   else:
     ln = tf.contrib.layers.layer_norm(
         inputs=conv,
-        begin_norm_axis=2,
+        # begin_norm_axis=2,
     )
 
   output = ln
