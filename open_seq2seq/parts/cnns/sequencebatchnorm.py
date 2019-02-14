@@ -257,3 +257,80 @@ def masked_batch_normalization(inputs,
       _reuse=reuse,
       _scope=name)
   return layer.apply(inputs, training=training)
+
+
+
+
+class SequenceBatchNormalization(tf.layers.Layer, tf.keras.layers.Layer):
+  """Applies layer normalization."""
+
+  def __init__(self, hidden_size, momentum):
+    super(SequenceBatchNormalization, self).__init__()
+    self.hidden_size = hidden_size
+    self.momentum = momentum
+
+  def _assign_moving_average(self, variable, value, momentum):
+    with tf.name_scope(None, 'AssignMovingAvg',
+                        [variable, value, momentum]) as scope:
+      with tf.colocate_with(variable):
+        decay = tf.convert_to_tensor(1.0 - momentum, name='decay')
+        if decay.dtype != variable.dtype.base_dtype:
+          decay = tf.cast(decay, variable.dtype.base_dtype)
+        update_delta = (variable - tf.cast(value, variable.dtype)) * decay
+        return tf.assign_sub(variable, update_delta, name=scope)
+
+  def build(self, _):
+    self.scale = tf.get_variable("gamma", [self.hidden_size],
+                                 initializer=tf.ones_initializer(dtype=tf.float32),
+                                 dtype=tf.float32)
+    self.bias = tf.get_variable("beta", [self.hidden_size],
+                                initializer=tf.zeros_initializer(dtype=tf.float32),
+                                dtype=tf.float32)
+    self.moving_mean  = tf.get_variable("moving_mean", [self.hidden_size],
+                                 initializer=tf.zeros_initializer(dtype=tf.float32),
+                                 trainable=False,
+                                 dtype=tf.float32)
+    self.moving_variance  = tf.get_variable("moving_variance", [self.hidden_size],
+                                 initializer=tf.ones_initializer(dtype=tf.float32),
+                                 trainable=False,
+                                 dtype=tf.float32)
+    self.built = True
+
+  def call(self, inputs, mask, training, epsilon):
+    dtype = inputs.dtype
+    input_shape = inputs.get_shape()
+    inputs = tf.cast(x=inputs, dtype=tf.float32)
+    if training:
+      if mask is not None:
+        x_masked = inputs * mask
+        mask_count = tf.reduce_sum(mask, axis=[0, 1], keepdims=True)
+        mean = tf.reduce_sum(x_masked, axis=[0, 1], keepdims=True) / mask_count
+        variance = tf.reduce_sum(tf.square(inputs - mean) * mask, axis=[0, 1], keepdims=True) / mask_count
+      else:
+        mean, variance = nn.moments(inputs, [0, 1], keep_dims=True)
+
+      def _do_update(var, value):
+        value = tf.squeeze(value, axis=0)
+        value = tf.squeeze(value, axis=0)
+        return self._assign_moving_average(var, value, self.momentum)
+
+      mean_update = tf_utils.smart_cond(
+          training,
+          lambda: _do_update(self.moving_mean, mean),
+          lambda: self.moving_mean)
+      variance_update = tf_utils.smart_cond(
+          training,
+          lambda: _do_update(self.moving_variance, variance),
+          lambda: self.moving_variance)
+      self.add_update(mean_update, inputs=True)
+      self.add_update(variance_update, inputs=True)
+
+    else:
+      mean, variance = self.moving_mean, self.moving_variance
+
+    norm_x = (inputs - mean) * tf.rsqrt(variance + epsilon)
+    outputs = norm_x * self.scale + self.bias
+    # If some components of the shape got lost due to adjustments, fix that.
+    outputs.set_shape(input_shape)
+
+    return tf.cast(x=outputs, dtype=dtype)

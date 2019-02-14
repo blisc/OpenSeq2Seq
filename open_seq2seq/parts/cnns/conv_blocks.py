@@ -8,7 +8,7 @@ from six.moves import range
 import tensorflow as tf
 from .tcn import tcn
 from .conv1d_wn import conv1d_wn
-from .sequencebatchnorm import masked_batch_normalization
+from .sequencebatchnorm import masked_batch_normalization, SequenceBatchNormalization
 from ..transformer.common import SequenceLayerNormalization
 
 LAYERS_DICT = {
@@ -282,25 +282,29 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
 
   # trick to make batchnorm work for mixed precision training.
   # To-Do check if batchnorm works smoothly for >4 dimensional tensors
-  squeeze = False
-  if layer_type == "conv1d":
-    axis = 1 if data_format == 'channels_last' else 2
-    conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
-    squeeze = True
 
   if mask is not None:
-    bn = masked_batch_normalization(
-        name="{}/bn".format(name),
-        inputs=conv,
-        gamma_regularizer=regularizer,
-        training=training,
-        axis=-1 if data_format == 'channels_last' else 1,
-        momentum=bn_momentum,
-        epsilon=bn_epsilon,
-        mask=mask,
-        fused=False
-    )
+    # bn = masked_batch_normalization(
+    #     name="{}/bn".format(name),
+    #     inputs=conv,
+    #     gamma_regularizer=regularizer,
+    #     training=training,
+    #     axis=-1 if data_format == 'channels_last' else 1,
+    #     momentum=bn_momentum,
+    #     epsilon=bn_epsilon,
+    #     mask=mask,
+    #     fused=False
+    # )
+    batchnorm_layer = SequenceBatchNormalization(
+        conv.get_shape().as_list()[-1],
+        bn_momentum)
+    bn = batchnorm_layer(conv, mask, training, bn_epsilon)
   else:
+    squeeze = False
+    if layer_type == "conv1d":
+      axis = 1 if data_format == 'channels_last' else 2
+      conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
+      squeeze = True
     bn = tf.layers.batch_normalization(
         name="{}/bn".format(name),
         inputs=conv,
@@ -310,9 +314,8 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
     )
-
-  if squeeze:
-    bn = tf.squeeze(bn, axis=axis)
+    if squeeze:
+      bn = tf.squeeze(bn, axis=axis)
 
   output = bn
   if activation_fn is not None:
