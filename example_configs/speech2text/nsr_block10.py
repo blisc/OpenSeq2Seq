@@ -200,7 +200,8 @@ base_params = {
         "activation_fn": activation,
         "gate_activation_fn": gate_activation,
         "data_format": "channels_last",
-        "wn_bias_init": False
+        "wn_bias_init": False,
+        "use_mask": True
     },
 
     "decoder": FullyConnectedCTCDecoder,
