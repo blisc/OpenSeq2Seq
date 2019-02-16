@@ -38,6 +38,8 @@ class TDNNEncoder(Encoder):
         'wn_bias_init': bool,
         'gate_activation_fn': None,
         'use_mask': bool,
+        'res_bias': bool,
+        'conv_bias': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -214,7 +216,7 @@ class TDNNEncoder(Encoder):
                 1,
                 name="conv{}{}/res_{}".format(
                 idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=False,
+                use_bias=self.params.get('res_bias', False),
                 # kernel_regularizer=regularizer,
             )
             total_res += res
@@ -228,7 +230,7 @@ class TDNNEncoder(Encoder):
                 1,
                 name="conv{}{}/res_{}".format(
                 idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=False,
+                use_bias=self.params.get('res_bias', False),
                 # kernel_regularizer=regularizer,
             )
             total_res += res
@@ -249,6 +251,7 @@ class TDNNEncoder(Encoder):
             dilation=dilation,
             regularizer=regularizer,
             data_format=data_format,
+            conv_bias=self.params.get('conv_bias', False),
             **normalization_params
         )
 

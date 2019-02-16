@@ -256,7 +256,7 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer, training,
                      data_format, bn_momentum, bn_epsilon,
-                     dilation=1, mask=None):
+                     dilation=1, mask=None, conv_bias=False):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -273,7 +273,7 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
       padding=padding,
       dilation_rate=dilation,
       kernel_regularizer=regularizer,
-      use_bias=False,
+      use_bias=conv_bias,
       data_format=data_format,
   )
 
@@ -355,7 +355,7 @@ def conv_res_actv(layer_type, name, inputs, res, filters, kernel_size,
 
 def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer,
-                     data_format, mask=None, dilation=1):
+                     data_format, mask=None, dilation=1, conv_bias=False):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -372,7 +372,7 @@ def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
       padding=padding,
       dilation_rate=dilation,
       kernel_regularizer=regularizer,
-      use_bias=False,
+      use_bias=conv_bias,
       data_format=data_format,
   )
 
