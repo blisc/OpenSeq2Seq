@@ -216,7 +216,8 @@ class TDNNEncoder(Encoder):
                 1,
                 name="conv{}{}/res_{}".format(
                 idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=self.params.get('res_bias', False),
+                use_bias=False,
+                # use_bias=self.params.get('res_bias', False),
                 # kernel_regularizer=regularizer,
             )
             total_res += res
@@ -229,11 +230,20 @@ class TDNNEncoder(Encoder):
                 ch_out_r,
                 1,
                 name="conv{}{}/res_{}".format(
-                idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=self.params.get('res_bias', False),
+                    idx_convnet + 1, idx_layer + 1, i+1),
+                # use_bias=self.params.get('res_bias', False),
+                use_bias=False,
                 # kernel_regularizer=regularizer,
             )
             total_res += res
+        if residual and self.params.get('res_bias', False):
+          res_bias = tf.get_variable(
+              "conv{}{}/res_0/bias".format(
+                  idx_convnet + 1, idx_layer + 1, i+1),
+              shape=[ch_out_r],
+              initializer=tf.zeros_initializer(),
+              trainable=True)
+          total_res += res_bias
 
         scale = math.sqrt(1/float(scale))
 
