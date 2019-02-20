@@ -239,7 +239,7 @@ class TDNNEncoder(Encoder):
         if residual and self.params.get('res_bias', False):
           res_bias = tf.get_variable(
               "conv{}{}/res_0/bias".format(
-                  idx_convnet + 1, idx_layer + 1, i+1),
+                  idx_convnet + 1, idx_layer + 1),
               shape=[ch_out_r],
               initializer=tf.zeros_initializer(),
               trainable=True)
