@@ -39,18 +39,22 @@ class LayerNormalization(tf.layers.Layer):
 class SequenceLayerNormalization(tf.layers.Layer):
   """Applies layer normalization."""
 
-  def __init__(self, hidden_size):
+  def __init__(self, hidden_size, gamma_regularizer=None):
     super(SequenceLayerNormalization, self).__init__()
     self.hidden_size = hidden_size
+    self.gamma_regularizer = gamma_regularizer
 
   def build(self, _):
     self.scale = tf.get_variable(
         "layer_norm_scale", [self.hidden_size],
         initializer=tf.ones_initializer(dtype=tf.float32),
+        regularizer=self.gamma_regularizer,
+        trainable=True,
         dtype=tf.float32)
     self.bias = tf.get_variable(
         "layer_norm_bias", [self.hidden_size],
         initializer=tf.zeros_initializer(dtype=tf.float32),
+        trainable=True,
         dtype=tf.float32)
     self.built = True
 

@@ -264,10 +264,11 @@ def masked_batch_normalization(inputs,
 class SequenceBatchNormalization(tf.layers.Layer, tf.keras.layers.Layer):
   """Applies layer normalization."""
 
-  def __init__(self, hidden_size, momentum):
+  def __init__(self, hidden_size, momentum, gamma_regularizer=None):
     super(SequenceBatchNormalization, self).__init__()
     self.hidden_size = hidden_size
     self.momentum = momentum
+    self.gamma_regularizer = gamma_regularizer
 
   def _assign_moving_average(self, variable, value, momentum):
     with tf.name_scope(None, 'AssignMovingAvg',
@@ -280,20 +281,31 @@ class SequenceBatchNormalization(tf.layers.Layer, tf.keras.layers.Layer):
         return tf.assign_sub(variable, update_delta, name=scope)
 
   def build(self, _):
-    self.scale = tf.get_variable("gamma", [self.hidden_size],
-                                 initializer=tf.ones_initializer(dtype=tf.float32),
-                                 dtype=tf.float32)
-    self.bias = tf.get_variable("beta", [self.hidden_size],
-                                initializer=tf.zeros_initializer(dtype=tf.float32),
-                                dtype=tf.float32)
-    self.moving_mean  = tf.get_variable("moving_mean", [self.hidden_size],
-                                 initializer=tf.zeros_initializer(dtype=tf.float32),
-                                 trainable=False,
-                                 dtype=tf.float32)
-    self.moving_variance  = tf.get_variable("moving_variance", [self.hidden_size],
-                                 initializer=tf.ones_initializer(dtype=tf.float32),
-                                 trainable=False,
-                                 dtype=tf.float32)
+    self.scale = tf.get_variable(
+        "gamma",
+        [self.hidden_size],
+         initializer=tf.ones_initializer(dtype=tf.float32),
+         regularizer=self.gamma_regularizer,
+         trainable=True,
+         dtype=tf.float32)
+    self.bias = tf.get_variable(
+        "beta",
+        [self.hidden_size],
+         initializer=tf.zeros_initializer(dtype=tf.float32),
+         trainable=True,
+         dtype=tf.float32)
+    self.moving_mean  = tf.get_variable(
+        "moving_mean",
+        [self.hidden_size],
+        initializer=tf.zeros_initializer(dtype=tf.float32),
+        trainable=False,
+        dtype=tf.float32)
+    self.moving_variance  = tf.get_variable(
+        "moving_variance",
+        [self.hidden_size],
+        initializer=tf.ones_initializer(dtype=tf.float32),
+        trainable=False,
+        dtype=tf.float32)
     self.built = True
 
   def call(self, inputs, mask, training, epsilon):

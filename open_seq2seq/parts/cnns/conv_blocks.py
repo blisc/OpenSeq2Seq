@@ -297,7 +297,8 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
     # )
     batchnorm_layer = SequenceBatchNormalization(
         conv.get_shape().as_list()[-1],
-        bn_momentum)
+        bn_momentum,
+        gamma_regularizer=regularizer)
     bn = batchnorm_layer(conv, mask, training, bn_epsilon)
   else:
     squeeze = False
@@ -380,7 +381,9 @@ def conv_res_ln_actv(layer_type, name, inputs, res, filters, kernel_size,
     conv += res
 
   if mask is not None:
-    layer_norm_layer = SequenceLayerNormalization(conv.get_shape().as_list()[-1])
+    layer_norm_layer = SequenceLayerNormalization(
+        conv.get_shape().as_list()[-1],
+        gamma_regularizer=regularizer)
     ln = layer_norm_layer(conv, mask)
   else:
     ln = tf.contrib.layers.layer_norm(
