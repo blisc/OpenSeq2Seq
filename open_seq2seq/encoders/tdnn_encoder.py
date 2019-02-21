@@ -207,20 +207,9 @@ class TDNNEncoder(Encoder):
           src_length = (src_length + strides[0] - 1) // strides[0]
         total_res = None
         scale = 1
-        if residual == "skip" and final_skip and idx_layer == layer_repeat - 1:
-          total_res = 0
-          for i, res in enumerate(residual_aggregation):
-            res = tf.layers.conv1d(
-                res,
-                ch_out_r,
-                1,
-                name="conv{}{}/res_{}".format(
-                idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=self.params.get('res_bias', False),
-                # kernel_regularizer=regularizer,
-            )
-            total_res += res
-        elif residual and idx_layer == layer_repeat - 1:
+        if residual == "skip":
+          raise ValueError("skip is currently disabled")
+        if residual and idx_layer == layer_repeat - 1:
           scale += 1
           total_res = 0
           for i, res in enumerate(layer_res):
@@ -229,11 +218,19 @@ class TDNNEncoder(Encoder):
                 ch_out_r,
                 1,
                 name="conv{}{}/res_{}".format(
-                idx_convnet + 1, idx_layer + 1, i+1),
-                use_bias=self.params.get('res_bias', False),
+                    idx_convnet + 1, idx_layer + 1, i+1),
+                # use_bias=self.params.get('res_bias', False),
+                use_bias=False,
                 # kernel_regularizer=regularizer,
             )
             total_res += res
+          res_bias = tf.get_variable(
+              "conv{}{}/res/bias".format(
+                  idx_convnet + 1, idx_layer + 1),
+              shape=[ch_out_r],
+              initializer=tf.zeros_initializer(),
+              trainable=True)
+          total_res += res_bias
 
         scale = math.sqrt(1/float(scale))
 
