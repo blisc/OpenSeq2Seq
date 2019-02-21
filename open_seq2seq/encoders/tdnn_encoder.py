@@ -112,7 +112,7 @@ class TDNNEncoder(Encoder):
     dropout_keep_prob = self.params['dropout_keep_prob'] if training else 1.0
     regularizer = self.params.get('regularizer', None)
     data_format = self.params.get('data_format', 'channels_last')
-    res_normalization = normalization = self.params.get('normalization', 'batch_norm')
+    normalization = self.params.get('normalization', 'batch_norm')
 
     normalization_params = {}
     # if normalization is None:
@@ -131,11 +131,9 @@ class TDNNEncoder(Encoder):
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
       normalization_params['training'] = training
       res_factor = 1
-      res_normalization = None
     elif normalization == "layer_norm":
       conv_block = conv_res_ln_actv
       res_factor = 1
-      res_normalization = None
     # elif normalization == "instance_norm":
     #   conv_block = conv_in_actv
     elif normalization == "weight_norm":

@@ -12,7 +12,7 @@ normalization = "batch_norm"
 activation = tf.nn.relu
 gate_activation = None
 
-residual = "dense" # False, "res", "dense", "skip"
+residual = False # False, "res", "dense", "skip"
 repeat_1 = 3
 repeat_2 = 3
 dropout_factor = 1.
