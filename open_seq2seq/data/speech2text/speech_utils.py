@@ -444,7 +444,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
         constant_values=pad_value
     )
     assert features.shape[0] % pad_to == 0
-  # mean = np.mean(features)
-  # std_dev = np.std(features)
-  # features = (features - mean) / std_dev
+  mean = np.mean(features)
+  std_dev = np.std(features)
+  features = (features - mean) / std_dev
   return features, audio_duration
