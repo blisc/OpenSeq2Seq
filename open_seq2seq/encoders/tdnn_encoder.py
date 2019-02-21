@@ -117,7 +117,7 @@ class TDNNEncoder(Encoder):
     normalization_params = {}
     # if normalization is None:
     #   conv_block = conv_actv
-    if self.params.get('use_mask', False) and (normalization == "batch_norm" or normalization == "layer_norm"):
+    if self.params.get('use_mask', False) and (normalization in ("batch_norm", "layer_norm")):
       mask = tf.sequence_mask(
           lengths=src_length, maxlen=tf.reduce_max(src_length),
           dtype=tf.float32
@@ -142,7 +142,7 @@ class TDNNEncoder(Encoder):
       conv_block = conv1d_wn_actv_res
       res_factor = 0.5
       normalization_params["bias_init"] = self.params.get("wn_bias_init", False)
-    elif normalization == None:
+    elif normalization is None:
       conv_block = conv_res_actv
       res_factor = 1
     else:
@@ -224,13 +224,14 @@ class TDNNEncoder(Encoder):
                 # kernel_regularizer=regularizer,
             )
             total_res += res
-          res_bias = tf.get_variable(
-              "conv{}{}/res/bias".format(
-                  idx_convnet + 1, idx_layer + 1),
-              shape=[ch_out_r],
-              initializer=tf.zeros_initializer(),
-              trainable=True)
-          total_res += res_bias
+          if self.params.get('res_bias', False):
+            res_bias = tf.get_variable(
+                "conv{}{}/res/bias".format(
+                    idx_convnet + 1, idx_layer + 1),
+                shape=[ch_out_r],
+                initializer=tf.zeros_initializer(),
+                trainable=True)
+            total_res += res_bias
 
         scale = math.sqrt(1/float(scale))
 
