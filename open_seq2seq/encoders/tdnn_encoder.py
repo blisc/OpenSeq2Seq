@@ -37,6 +37,7 @@ class TDNNEncoder(Encoder):
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
         'gate_activation_fn': None,
+        'bn_test': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -217,6 +218,19 @@ class TDNNEncoder(Encoder):
                 use_bias=False,
                 # kernel_regularizer=regularizer,
             )
+            if self.params.get('bn_test', False):
+              res = tf.expand_dims(res, axis=1)
+              res = tf.layers.batch_normalization(
+                  name="conv{}{}/res_bn_{}".format(
+                    idx_convnet + 1, idx_layer + 1, i+1),
+                  inputs=res,
+                  gamma_regularizer=regularizer,
+                  training=training,
+                  axis=-1,
+                  momentum=normalization_params['bn_momentum'],
+                  epsilon=normalization_params['bn_epsilon'],
+              )
+              res = tf.squeeze(res, axis=1)
             total_res += res
 
         scale = math.sqrt(1/float(scale))
