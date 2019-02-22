@@ -383,7 +383,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
   #     pad_size = (pad_to - length % pad_to) * n_window_stride
   #     signal = np.pad(signal, (0, pad_size), mode='constant')
 
-  mag, _ = librosa.magphase(librosa.stft(y=signal, n_fft=n_window_size, hop_length=n_window_stride), power=1)
+  mag, _ = librosa.magphase(librosa.stft(y=signal, n_fft=512, hop_length=n_window_stride, win_length=n_window_size), power=1)
   # frames = psf.sigproc.framesig(sig=signal,
   #                                 frame_len=n_window_size,
   #                                 frame_step=n_window_stride,
