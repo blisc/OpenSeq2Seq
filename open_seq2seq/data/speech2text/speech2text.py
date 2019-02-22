@@ -44,6 +44,7 @@ class Speech2TextDataLayer(DataLayer):
         'window_size': float,
         'window_stride': float,
         'librosa': bool,
+        'normalize': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -117,11 +118,10 @@ class Speech2TextDataLayer(DataLayer):
       return
 
     if self.params.get("librosa", False):
-      n_fft = int(16000 * params.get('window_size', 20e-3))
       self.mel_basis = librosa.filters.mel(
           sr=16000,
-          n_fft=n_fft,
-          n_mels=80,
+          n_fft=512,
+          n_mels=self.params['num_audio_features'],
           htk=True,
           norm=None,
           fmin=0,

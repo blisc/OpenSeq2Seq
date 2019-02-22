@@ -225,7 +225,8 @@ base_params = {
         "num_audio_features": 64,
         "input_type": "logfbank",
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        "librosa": False
+        "librosa": False,
+        "normalize": False
     },
 }
 

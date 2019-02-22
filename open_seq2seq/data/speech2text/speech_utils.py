@@ -179,11 +179,18 @@ Returns:
                                        data_format=cache_format)
 
   except PreprocessOnTheFlyException:
-    sample_freq, signal = wave.read(filename)
-    features, duration = get_speech_features(
-        signal, sample_freq, num_features, pad_to, features_type,
-        window_size, window_stride, augmentation,
-    )
+    if params.get("librosa", False):
+      signal, sample_freq = librosa.core.load(filename, sr=None)
+      features, duration = get_speech_features_librosa(
+          signal, sample_freq, num_features, pad_to, features_type,
+          window_size, window_stride, augmentation, mel_basis, params.get("normalize", False)
+      )
+    else:
+      sample_freq, signal = wave.read(filename)
+      features, duration = get_speech_features(
+          signal, sample_freq, num_features, pad_to, features_type,
+          window_size, window_stride, augmentation, mel_basis
+      )
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
     sample_freq, signal = wave.read(filename)
@@ -349,7 +356,8 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
                         window_size=20e-3,
                         window_stride=10e-3,
                         augmentation=None,
-                        mel_basis=None):
+                        mel_basis=None,
+                        normalize=False):
   """Function to convert raw audio signal to numpy array of features.
 
   Args:
@@ -444,7 +452,9 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
         constant_values=pad_value
     )
     assert features.shape[0] % pad_to == 0
-  mean = np.mean(features)
-  std_dev = np.std(features)
-  features = (features - mean) / std_dev
+
+  if normalize:
+    mean = np.mean(features)
+    std_dev = np.std(features)
+    features = (features - mean) / std_dev
   return features, audio_duration
