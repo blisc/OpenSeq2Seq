@@ -6,6 +6,7 @@ import math
 import os
 
 import h5py
+import librosa
 import numpy as np
 import python_speech_features as psf
 import resampy as rs
@@ -140,7 +141,8 @@ def get_speech_features_from_file(filename,
                                   cache_features=False,
                                   cache_format="hdf5",
                                   cache_regenerate=False,
-                                  params={}):
+                                  params={},
+                                  mel_basis=None):
   """Function to get a numpy array of features, from an audio file.
       if params['cache_features']==True, try load preprocessed data from
       disk, or store after preprocesseng.
@@ -177,11 +179,19 @@ Returns:
                                        data_format=cache_format)
 
   except PreprocessOnTheFlyException:
-    sample_freq, signal = wave.read(filename)
-    features, duration = get_speech_features(
-        signal, sample_freq, num_features, pad_to, features_type,
-        window_size, window_stride, augmentation,
-    )
+    if params.get("librosa", False):
+      signal, sample_freq = librosa.core.load(filename, sr=None)
+      features, duration = get_speech_features_librosa(
+          signal, sample_freq, num_features, pad_to, features_type,
+          window_size, window_stride, augmentation, mel_basis,
+          params.get("normalize", False)
+      )
+    else:
+      sample_freq, signal = wave.read(filename)
+      features, duration = get_speech_features(
+          signal, sample_freq, num_features, pad_to, features_type,
+          window_size, window_stride, augmentation, mel_basis
+      )
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
     sample_freq, signal = wave.read(filename)
@@ -317,6 +327,14 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
                         appendEnergy=False)
 
   elif features_type == 'logfbank':
+    # features = psf.logfbank(signal=signal,
+    #                         samplerate=sample_freq,
+    #                         winlen=window_size,
+    #                         winstep=window_stride,
+    #                         nfilt=num_features,
+    #                         nfft=512,
+    #                         lowfreq=0, highfreq=sample_freq / 2,
+    #                         preemph=0.97)
     features = psf.logfbank(signal=signal,
                             samplerate=sample_freq,
                             winlen=window_size,
@@ -324,7 +342,8 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
                             nfilt=num_features,
                             nfft=512,
                             lowfreq=0, highfreq=sample_freq / 2,
-                            preemph=0.97)
+                            preemph=0.97,
+                            winfunc=np.hanning)
 
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
@@ -334,4 +353,55 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   mean = np.mean(features)
   std_dev = np.std(features)
   features = (features - mean) / std_dev
+  return features, audio_duration
+
+def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
+                        features_type='spectrogram',
+                        window_size=20e-3,
+                        window_stride=10e-3,
+                        augmentation=None,
+                        mel_basis=None,
+                        normalize=False):
+  audio_duration = len(signal) * 1.0 / sample_freq
+
+  n_window_size = int(sample_freq * window_size)
+  n_window_stride = int(sample_freq * window_stride)
+
+  mag, _ = librosa.magphase(librosa.stft(y=signal, n_fft=512,
+                                         hop_length=n_window_stride,
+                                         win_length=n_window_size),
+                            power=1)
+
+  if features_type == 'spectrogram':
+    features = np.log(np.clip(mag, a_min=1e-5, a_max=None)).T
+    assert num_features <= n_window_size // 2 + 1, \
+        "num_features for spectrogram should be <= (fs * window_size // 2 + 1)"
+
+    # cut high frequency part
+    features = features[:, :num_features]
+    pad_value = 1e-5
+
+  elif features_type == 'logfbank':
+    features = np.dot(mel_basis, mag)
+    features = np.log(np.clip(features, a_min=1e-2, a_max=None)).T
+    pad_value = 1e-2
+
+  else:
+    raise ValueError('Unknown features type: {}'.format(features_type))
+
+  if pad_to > 0:
+    num_pad = pad_to - ((len(features) + 1) % pad_to) + 1
+    features = np.pad(
+        features,
+        # ((8, num_pad), (0, 0)),
+        ((0, num_pad), (0, 0)),
+        "constant",
+        constant_values=pad_value
+    )
+    assert features.shape[0] % pad_to == 0
+
+  if normalize:
+    mean = np.mean(features)
+    std_dev = np.std(features)
+    features = (features - mean) / std_dev
   return features, audio_duration

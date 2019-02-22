@@ -224,14 +224,20 @@ base_params = {
     },
     "loss": CTCLoss,
     "loss_params": {},
-}
 
-train_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "num_audio_features": 64,
         "input_type": "logfbank",
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
+        "librosa": False,
+        "normalize": False
+    },
+}
+
+train_params = {
+    "data_layer": Speech2TextDataLayer,
+    "data_layer_params": {
         "augmentation": data_aug,
         "dataset_files": dataset_files,
         "max_duration": 16.7,
@@ -243,9 +249,6 @@ train_params = {
 eval_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
-        "num_audio_features": 64,
-        "input_type": "logfbank",
-        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "dataset_files": [
             "/data/librispeech/librivox-dev-clean.csv",
         ],
@@ -256,9 +259,6 @@ eval_params = {
 infer_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
-        "num_audio_features": 64,
-        "input_type": "logfbank",
-        "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "dataset_files": [
             "/data/librispeech/librivox-test-clean.csv",
         ],

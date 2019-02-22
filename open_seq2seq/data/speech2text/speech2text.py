@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import six
+import librosa
 from six import string_types
 from six.moves import range
 
@@ -40,6 +41,8 @@ class Speech2TextDataLayer(DataLayer):
         'syn_subdirs': list,
         'window_size': float,
         'window_stride': float,
+        'librosa': bool,
+        'normalize': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -99,6 +102,19 @@ class Speech2TextDataLayer(DataLayer):
     self._files = None
     if self.params["interactive"]:
       return
+
+    if self.params.get("librosa", False):
+      self.mel_basis = librosa.filters.mel(
+          sr=16000,
+          n_fft=512,
+          n_mels=self.params['num_audio_features'],
+          htk=True,
+          norm=None,
+          fmin=0,
+          fmax=8000
+      )
+    else:
+      self.mel_basis = None
     for csv in params['dataset_files']:
       files = pd.read_csv(csv, encoding='utf-8')
       if self._files is None:
@@ -336,7 +352,8 @@ class Speech2TextDataLayer(DataLayer):
         cache_features=self.params.get('cache_features', False),
         cache_format=self.params.get('cache_format', 'hdf5'),
         cache_regenerate=self.params.get('cache_regenerate', False),
-        params=self.params
+        params=self.params,
+        mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), \
