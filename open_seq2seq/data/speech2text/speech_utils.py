@@ -190,7 +190,7 @@ Returns:
       sample_freq, signal = wave.read(filename)
       features, duration = get_speech_features(
           signal, sample_freq, num_features, pad_to, features_type,
-          window_size, window_stride, augmentation, mel_basis
+          window_size, window_stride, augmentation
       )
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
