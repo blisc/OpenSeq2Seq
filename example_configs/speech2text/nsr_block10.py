@@ -231,7 +231,9 @@ base_params = {
         "input_type": "logfbank",
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "librosa": False,
-        "normalize": False
+        "normalize": False,
+        "syn_enable": False,
+        "syn_subdirs" :["1_50", "2_44", "3_47", "50", "46", "48"]
     },
 }
 
