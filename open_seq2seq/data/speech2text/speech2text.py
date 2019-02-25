@@ -43,7 +43,6 @@ class Speech2TextDataLayer(DataLayer):
         'window_stride': float,
         'librosa': bool,
         'normalize': bool,
-        'padding_test': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):

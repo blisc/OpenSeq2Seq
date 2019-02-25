@@ -37,7 +37,8 @@ class TDNNEncoder(Encoder):
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
         'gate_activation_fn': None,
-        'use_mask': bool,
+        'use_conv_mask': bool,
+        'use_bn_mask': bool,
         'res_bias': bool,
         'conv_bias': bool,
     })
@@ -117,13 +118,16 @@ class TDNNEncoder(Encoder):
     normalization_params = {}
     # if normalization is None:
     #   conv_block = conv_actv
-    if self.params.get('use_mask', False) and (normalization in ("batch_norm", "layer_norm")):
+    mask = None
+    if ((normalization in ("batch_norm", "layer_norm")) and 
+        (self.params.get("use_conv_mask", False) or self.params.get("use_bn_mask", False))):
       mask = tf.sequence_mask(
           lengths=src_length, maxlen=tf.reduce_max(src_length),
           dtype=tf.float32
       )
       mask = tf.expand_dims(mask, 2)
-      normalization_params['mask'] = mask
+      if self.params.get("use_bn_mask", False):
+        normalization_params['mask'] = mask
     if normalization == "batch_norm":
       conv_block = conv_res_bn_actv
       normalization_params['bn_momentum'] = self.params.get(
@@ -180,17 +184,18 @@ class TDNNEncoder(Encoder):
       residual = convnet_layers[idx_convnet].get('residual', False)
       final_skip = convnet_layers[idx_convnet].get('final_skip', False)
 
-      if normalization_params.get("mask", None) is not None:
+      if self.params.get("use_conv_mask", False):
         conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
 
-      if strides[0] > 1 and normalization_params.get("mask", None) is not None:
+      if strides[0] > 1 and mask is not None:
         mask = tf.sequence_mask(
             lengths=src_length/strides[0],
             maxlen=tf.reduce_max(src_length/strides[0]),
             dtype=tf.float32
         )
         mask = tf.expand_dims(mask, 2)
-        normalization_params['mask'] = mask
+        if self.params.get("use_bn_mask", False):
+          normalization_params['mask'] = mask
 
       # If residual is "res", "dense", or "skip"
       if residual:
