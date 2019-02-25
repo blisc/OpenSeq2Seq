@@ -179,6 +179,10 @@ class TDNNEncoder(Encoder):
           'dropout_keep_prob', dropout_keep_prob) if training else 1.0
       residual = convnet_layers[idx_convnet].get('residual', False)
       final_skip = convnet_layers[idx_convnet].get('final_skip', False)
+
+      if normalization_params.get("mask", None) is not None:
+        conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
+
       if strides[0] > 1 and normalization_params.get("mask", None) is not None:
         mask = tf.sequence_mask(
             lengths=src_length/strides[0],

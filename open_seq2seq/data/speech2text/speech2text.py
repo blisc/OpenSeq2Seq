@@ -43,6 +43,7 @@ class Speech2TextDataLayer(DataLayer):
         'window_stride': float,
         'librosa': bool,
         'normalize': bool,
+        'padding_test': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -353,7 +354,7 @@ class Speech2TextDataLayer(DataLayer):
         cache_format=self.params.get('cache_format', 'hdf5'),
         cache_regenerate=self.params.get('cache_regenerate', False),
         params=self.params,
-        mel_basis=self.mel_basis
+        mel_basis=self.mel_basis,
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), \
