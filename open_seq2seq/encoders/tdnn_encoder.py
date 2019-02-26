@@ -42,6 +42,7 @@ class TDNNEncoder(Encoder):
         'res_bias': bool,
         'conv_bias': bool,
         'bn_renorm': bool,
+        'use_dense_conv_block': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -188,18 +189,18 @@ class TDNNEncoder(Encoder):
       residual = convnet_layers[idx_convnet].get('residual', False)
       final_skip = convnet_layers[idx_convnet].get('final_skip', False)
 
-      if self.params.get("use_conv_mask", False):
-        conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
+      # if self.params.get("use_conv_mask", False):
+      #   conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
 
-      if strides[0] > 1 and mask is not None:
-        mask = tf.sequence_mask(
-            lengths=src_length/strides[0],
-            maxlen=tf.reduce_max(src_length/strides[0]),
-            dtype=tf.float32
-        )
-        mask = tf.expand_dims(mask, 2)
-        if self.params.get("use_bn_mask", False):
-          normalization_params['mask'] = mask
+      # if strides[0] > 1 and mask is not None:
+      #     mask = tf.sequence_mask(
+      #         lengths=src_length/strides[0],
+      #         maxlen=tf.reduce_max(src_length/strides[0]),
+      #         dtype=tf.float32
+      #     )
+      #     mask = tf.expand_dims(mask, 2)
+      #     if self.params.get("use_bn_mask", False):
+      #       normalization_params['mask'] = mask
 
       # If residual is "res", "dense", or "skip"
       if residual:
@@ -245,6 +246,19 @@ class TDNNEncoder(Encoder):
             total_res += res_bias
 
         scale = math.sqrt(1/float(scale))
+
+        if idx_layer > 0 and self.params.get("use_conv_mask", False):
+          conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
+
+        if strides[0] > 1 and mask is not None:
+          mask = tf.sequence_mask(
+              lengths=src_length,
+              maxlen=tf.reduce_max(src_length),
+              dtype=tf.float32
+          )
+          mask = tf.expand_dims(mask, 2)
+          if self.params.get("use_bn_mask", False):
+            normalization_params['mask'] = mask
 
         conv_feats = conv_block(
             layer_type=layer_type,

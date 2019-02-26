@@ -206,6 +206,7 @@ base_params = {
         "res_bias": False,
         "conv_bias": False,
         "bn_renorm": False,
+        "use_dense_conv_block": False,
     },
 
     "decoder": FullyConnectedCTCDecoder,
