@@ -41,6 +41,7 @@ class TDNNEncoder(Encoder):
         'use_bn_mask': bool,
         'res_bias': bool,
         'conv_bias': bool,
+        'bn_renorm': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -135,6 +136,9 @@ class TDNNEncoder(Encoder):
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
       normalization_params['training'] = training
       res_factor = 1
+      normalization_params['renorm'] = self.params.get("bn_renorm", False)
+      if normalization_params['renorm'] and self.params.get("use_bn_mask", False):
+        raise ValueError("Masked bn does not support batch renorm")
     elif normalization == "layer_norm":
       conv_block = conv_res_ln_actv
       res_factor = 1

@@ -256,7 +256,7 @@ def conv_in_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
 def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
                      activation_fn, strides, padding, regularizer, training,
                      data_format, bn_momentum, bn_epsilon,
-                     dilation=1, mask=None, conv_bias=False):
+                     dilation=1, mask=None, conv_bias=False, renorm=False):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -306,6 +306,9 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
       axis = 1 if data_format == 'channels_last' else 2
       conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
       squeeze = True
+    # Somehow float16 is not converted with batch renorm
+    if renorm:
+      conv = tf.cast(conv, tf.float32)
     bn = tf.layers.batch_normalization(
         name="{}/bn".format(name),
         inputs=conv,
@@ -314,7 +317,10 @@ def conv_res_bn_actv(layer_type, name, inputs, res, filters, kernel_size,
         axis=-1 if data_format == 'channels_last' else 1,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
+        renorm=renorm,
     )
+    if renorm:
+      conv = tf.cast(conv, tf.float16)
     if squeeze:
       bn = tf.squeeze(bn, axis=axis)
 
