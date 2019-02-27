@@ -272,7 +272,7 @@ class TDNNEncoder(Encoder):
 
       if self.params.get('use_dense_conv_block', False) and layer_repeat > 1:
         conv_feats = tf.concat(conv_dense, axis=-1)
-        if residual == "dense" and len(layer_res) > 1:
+        if residual == "dense" and len(layer_res) > 0:
           all_res = tf.concat(layer_res, axis=-1)
           conv_feats = tf.concat([conv_feats, all_res], axis=-1)
         conv_feats = conv_block(
