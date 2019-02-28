@@ -42,7 +42,6 @@ class TDNNEncoder(Encoder):
         'res_bias': bool,
         'conv_bias': bool,
         'bn_renorm': bool,
-        'use_dense_conv_block': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
