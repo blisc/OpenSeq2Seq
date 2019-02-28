@@ -109,70 +109,70 @@ base_params = {
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [11], "stride": [1],
-                "num_channels": 256, "padding": "SAME",
+                "num_channels": 192, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [11], "stride": [1],
-                "num_channels": 256, "padding": "SAME",
+                "num_channels": 192, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [13], "stride": [1],
-                "num_channels": 384, "padding": "SAME",
+                "num_channels": 280, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [13], "stride": [1],
+                "num_channels": 280, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual
+            },
+            {
+                "type": "conv1d", "repeat": repeat_1,
+                "kernel_size": [17], "stride": [1],
+                "num_channels": 384, "padding": "SAME",
+                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
+                "residual": residual
+            },
+            {
+                "type": "conv1d", "repeat": repeat_2,
+                "kernel_size": [17], "stride": [1],
                 "num_channels": 384, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
-                "kernel_size": [17], "stride": [1],
-                "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual
-            },
-            {
-                "type": "conv1d", "repeat": repeat_2,
-                "kernel_size": [17], "stride": [1],
-                "num_channels": 512, "padding": "SAME",
-                "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
-                "residual": residual
-            },
-            {
-                "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [21], "stride": [1],
-                "num_channels": 640, "padding": "SAME",
+                "num_channels": 480, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [21], "stride": [1],
-                "num_channels": 640, "padding": "SAME",
+                "num_channels": 480, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [25], "stride": [1],
-                "num_channels": 768, "padding": "SAME",
+                "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [25], "stride": [1],
-                "num_channels": 768, "padding": "SAME",
+                "num_channels": 512, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
                 "residual": residual, "final_skip": True
             },
@@ -201,7 +201,8 @@ base_params = {
         "gate_activation_fn": gate_activation,
         "data_format": "channels_last",
         "wn_bias_init": False,
-        "bn_test": False
+        "bn_test": False,
+        "use_dense_conv_block": True
     },
 
     "decoder": FullyConnectedCTCDecoder,

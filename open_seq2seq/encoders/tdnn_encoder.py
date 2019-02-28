@@ -37,6 +37,8 @@ class TDNNEncoder(Encoder):
         # 'res_before_actv': bool,
         'wn_bias_init': bool,
         'gate_activation_fn': None,
+        'bn_test': bool,
+        'use_dense_conv_block': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -155,6 +157,7 @@ class TDNNEncoder(Encoder):
     # ----- Convolutional layers ---------------------------------------------
     convnet_layers = self.params['convnet_layers']
 
+
     for idx_convnet in range(len(convnet_layers)):
       layer_type = convnet_layers[idx_convnet]['type']
       layer_repeat = convnet_layers[idx_convnet]['repeat']
@@ -163,6 +166,9 @@ class TDNNEncoder(Encoder):
         ch_out_c = int(ch_out_c * math.sqrt(2))
         ch_out_c += ch_out_c % 2
         ch_out_r = int(ch_out_c * res_factor)
+      if self.params.get('use_dense_conv_block', False) and layer_repeat > 1:
+        conv_dense = [conv_feats]
+        # ch_out_r = ch_out_c = int(ch_out_c / math.sqrt(2))
       kernel_size = convnet_layers[idx_convnet]['kernel_size']
       strides = convnet_layers[idx_convnet]['stride']
       padding = convnet_layers[idx_convnet]['padding']
@@ -181,7 +187,10 @@ class TDNNEncoder(Encoder):
           residual_aggregation.append(layer_res[0])
           # For "dense", we want to pass every residual to current block
           if residual != "skip":
-            layer_res = residual_aggregation
+            if self.params.get('use_dense_conv_block', False):
+              layer_res = residual_aggregation[:-1]
+            else:
+              layer_res = residual_aggregation
       for idx_layer in range(layer_repeat):
         if padding == "VALID":
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
@@ -203,7 +212,7 @@ class TDNNEncoder(Encoder):
                 # kernel_regularizer=regularizer,
             )
             total_res += res
-        elif residual and idx_layer == layer_repeat - 1:
+        elif residual and idx_layer == layer_repeat - 1 and not self.params.get('use_dense_conv_block', False):
           scale += 1
           total_res = 0
           for i, res in enumerate(layer_res):
@@ -217,9 +226,25 @@ class TDNNEncoder(Encoder):
                 use_bias=False,
                 # kernel_regularizer=regularizer,
             )
+            if self.params.get('bn_test', False):
+              res = tf.expand_dims(res, axis=1)
+              res = tf.layers.batch_normalization(
+                  name="conv{}{}/res_bn_{}".format(
+                    idx_convnet + 1, idx_layer + 1, i+1),
+                  inputs=res,
+                  gamma_regularizer=regularizer,
+                  training=training,
+                  axis=-1,
+                  momentum=normalization_params['bn_momentum'],
+                  epsilon=normalization_params['bn_epsilon'],
+              )
+              res = tf.squeeze(res, axis=1)
             total_res += res
 
         scale = math.sqrt(1/float(scale))
+
+        if self.params.get('use_dense_conv_block', False) and layer_repeat > 1:
+          conv_feats = tf.concat(conv_dense, axis=-1)
 
         conv_feats = conv_block(
             layer_type=layer_type,
@@ -240,6 +265,32 @@ class TDNNEncoder(Encoder):
 
         if normalization == "weight_norm":
           conv_feats *= scale
+        conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
+
+        if self.params.get('use_dense_conv_block', False) and layer_repeat > 1:
+          conv_dense.append(conv_feats)
+
+      if self.params.get('use_dense_conv_block', False) and layer_repeat > 1:
+        conv_feats = tf.concat(conv_dense, axis=-1)
+        if residual == "dense" and len(layer_res) > 0:
+          all_res = tf.concat(layer_res, axis=-1)
+          conv_feats = tf.concat([conv_feats, all_res], axis=-1)
+        conv_feats = conv_block(
+            layer_type=layer_type,
+            name="conv{}/transition".format(
+                idx_convnet + 1),
+            inputs=conv_feats,
+            res=None,
+            filters=ch_out_c,
+            kernel_size=1,
+            activation_fn=self.params["activation_fn"],
+            strides=strides,
+            padding=padding,
+            dilation=dilation,
+            regularizer=regularizer,
+            data_format=data_format,
+            **normalization_params
+        )
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
 
     outputs = conv_feats
