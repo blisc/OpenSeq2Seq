@@ -216,11 +216,14 @@ class TDNNEncoder(Encoder):
           # For "dense", we want to pass every residual to current block
           if residual != "skip":
             layer_res = residual_aggregation
+
       for idx_layer in range(layer_repeat):
+
         if padding == "VALID":
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
         else:
           src_length = (src_length + strides[0] - 1) // strides[0]
+
         total_res = None
         scale = 1
         if residual == "skip":
