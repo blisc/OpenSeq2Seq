@@ -84,6 +84,7 @@ class FullyConnectedTimeDecoder(Decoder):
   def get_optional_params():
     return dict(Decoder.get_optional_params(), **{
         'logits_to_outputs_func': None,  # user defined function
+        'infer_logits_to_pickle': bool,  # user defined function
     })
 
   def __init__(self, params, model,
@@ -145,6 +146,11 @@ class FullyConnectedTimeDecoder(Decoder):
     # converting to time_major=True shape
     logits = tf.transpose(logits, [1, 0, 2])
 
+    if self.params.get('infer_logits_to_pickle', False):
+      return {
+          'outputs': [logits],
+          'src_length': input_dict['encoder_output']['src_length'],
+      }
     if 'logits_to_outputs_func' in self.params:
       outputs = self.params['logits_to_outputs_func'](logits, input_dict)
       return {
