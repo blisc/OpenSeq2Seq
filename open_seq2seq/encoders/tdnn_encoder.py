@@ -201,6 +201,11 @@ class TDNNEncoder(Encoder):
       #     if self.params.get("use_bn_mask", False):
       #       normalization_params['mask'] = mask
 
+      # For the first layer in the block, apply a mask
+      if self.params.get("use_conv_mask", False):
+        conv_feats = conv_feats * mask
+
+
       # If residual is "res", "dense", or "skip"
       if residual:
         # Normal "res" - only skips one convolution block
