@@ -3,6 +3,8 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
+import pickle
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -224,7 +226,7 @@ class Speech2Text(EncoderDecoderModel):
 
     return total_word_lev, total_word_count
 
-   def infer(self, input_values, output_values):
+  def infer(self, input_values, output_values):
     preds = []
     decoded_sequence = output_values[0]
     if self.dump_outputs:
