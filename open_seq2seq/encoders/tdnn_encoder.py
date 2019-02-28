@@ -203,7 +203,7 @@ class TDNNEncoder(Encoder):
 
       # For the first layer in the block, apply a mask
       if self.params.get("use_conv_mask", False):
-        conv_feats = conv_feats * mask
+        conv_feats = conv_feats * tf.cast(mask, dtype=conv_feats.dtype)
 
 
       # If residual is "res", "dense", or "skip"
