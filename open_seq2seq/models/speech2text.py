@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
+import pickle
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -93,6 +94,9 @@ class Speech2Text(EncoderDecoderModel):
     self.params['decoder_params']['tgt_vocab_size'] = (
         data_layer.params['tgt_vocab_size']
     )
+    self.dump_outputs = self.params['decoder_params'].get(
+        'infer_logits_to_pickle', False)
+
     self.tensor_to_chars = sparse_tensor_to_chars
     self.tensor_to_char_params = {}
     self.autoregressive = data_layer.params['autoregressive']
@@ -214,13 +218,18 @@ class Speech2Text(EncoderDecoderModel):
   def infer(self, input_values, output_values):
     preds = []
     decoded_sequence = output_values[0]
-    decoded_texts = self.tensor_to_chars(
-        decoded_sequence,
-        self.get_data_layer().params['idx2char'],
-        **self.tensor_to_char_params
-    )
-    for decoded_text in decoded_texts:
-      preds.append("".join(decoded_text))
+    if self.dump_outputs:
+      # decoded_sequence has 'time_major' shape: [T, B, C]
+      for i in range(decoded_sequence.shape[1]):
+        preds.append(decoded_sequence[:, i, :].squeeze())
+    else:
+      decoded_texts = self.tensor_to_chars(
+          decoded_sequence,
+          self.get_data_layer().params['idx2char'],
+          **self.tensor_to_char_params
+      )
+      for decoded_text in decoded_texts:
+        preds.append("".join(decoded_text))
     return preds, input_values['source_ids']
 
   def finalize_inference(self, results_per_batch, output_file):
@@ -236,13 +245,18 @@ class Speech2Text(EncoderDecoderModel):
     # restoring the correct order
     preds = preds[np.argsort(ids)]
 
-    pd.DataFrame(
-        {
-            'wav_filename': self.get_data_layer().all_files,
-            'predicted_transcript': preds,
-        },
-        columns=['wav_filename', 'predicted_transcript'],
-    ).to_csv(output_file, index=False)
+    if self.dump_outputs:
+      with open(output_file, 'wb') as f:
+        pickle.dump(preds, f, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+      pd.DataFrame(
+          {
+              'wav_filename': self.get_data_layer().all_files,
+              'predicted_transcript': preds,
+          },
+          columns=['wav_filename', 'predicted_transcript'],
+      ).to_csv(output_file, index=False)
+
 
   def _get_num_objects_per_step(self, worker_id=0):
     """Returns number of audio frames in current batch."""
