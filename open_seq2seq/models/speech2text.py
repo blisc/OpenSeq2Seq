@@ -3,6 +3,8 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
+import pickle
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -10,11 +12,10 @@ from six.moves import range
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-from io import BytesIO
 
+from io import BytesIO
 from open_seq2seq.utils.utils import deco_print
 from .encoder_decoder import EncoderDecoderModel
-
 
 def sparse_tensor_to_chars(tensor, idx2char):
   text = [''] * tensor.dense_shape[0]
@@ -27,7 +28,6 @@ def sparse_tensor_to_chars_bpe(tensor):
   idx = [[] for _ in range(tensor.dense_shape[0])]
   for idx_tuple, value in zip(tensor.indices, tensor.values):
     idx[idx_tuple[0]].append(int(value))
-  
   return idx
 
 
@@ -100,6 +100,9 @@ class Speech2Text(EncoderDecoderModel):
     self.params['decoder_params']['tgt_vocab_size'] = (
         data_layer.params['tgt_vocab_size']
     )
+    self.dump_outputs = self.params['decoder_params'].get(
+        'infer_logits_to_pickle', False)
+
 
     self.is_bpe = data_layer.params.get('bpe', False)
     self.tensor_to_chars = sparse_tensor_to_chars
@@ -168,7 +171,7 @@ class Speech2Text(EncoderDecoderModel):
       return {
           'Sample WER': sample_wer,
       }
-    
+
   def finalize_evaluation(self, results_per_batch, training_step=None):
     total_word_lev = 0.0
     total_word_count = 0.0
@@ -224,13 +227,18 @@ class Speech2Text(EncoderDecoderModel):
   def infer(self, input_values, output_values):
     preds = []
     decoded_sequence = output_values[0]
-    decoded_texts = self.tensor_to_chars(
-        decoded_sequence,
-        self.get_data_layer().params['idx2char'],
-        **self.tensor_to_char_params
-    )
-    for decoded_text in decoded_texts:
-      preds.append("".join(decoded_text))
+    if self.dump_outputs:
+      # decoded_sequence has 'time_major' shape: [T, B, C]
+      for i in range(decoded_sequence.shape[1]):
+        preds.append(decoded_sequence[:, i, :].squeeze())
+    else:
+      decoded_texts = self.tensor_to_chars(
+          decoded_sequence,
+          self.get_data_layer().params['idx2char'],
+          **self.tensor_to_char_params
+      )
+      for decoded_text in decoded_texts:
+        preds.append("".join(decoded_text))
     return preds, input_values['source_ids']
 
   def finalize_inference(self, results_per_batch, output_file):
@@ -246,13 +254,17 @@ class Speech2Text(EncoderDecoderModel):
     # restoring the correct order
     preds = preds[np.argsort(ids)]
 
-    pd.DataFrame(
-        {
-            'wav_filename': self.get_data_layer().all_files,
-            'predicted_transcript': preds,
-        },
-        columns=['wav_filename', 'predicted_transcript'],
-    ).to_csv(output_file, index=False)
+    if self.dump_outputs:
+      with open(output_file, 'wb') as f:
+        pickle.dump(preds, f, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+      pd.DataFrame(
+          {
+              'wav_filename': self.get_data_layer().all_files,
+              'predicted_transcript': preds,
+          },
+          columns=['wav_filename', 'predicted_transcript'],
+      ).to_csv(output_file, index=False)
 
   def _get_num_objects_per_step(self, worker_id=0):
     """Returns number of audio frames in current batch."""
