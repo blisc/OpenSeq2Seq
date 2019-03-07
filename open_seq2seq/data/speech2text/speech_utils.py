@@ -386,7 +386,7 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
 
-  norm_axis = 1 if norm_per_feature else None
+  norm_axis = 0 if norm_per_feature else None
   mean = np.mean(features, axis=norm_axis)
   std_dev = np.std(features, axis=norm_axis)
   features = (features - mean) / std_dev
@@ -531,5 +531,10 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
 
 #   plt.xlabel('time')
 #   plt.tight_layout()
-#   plt.show()
+#   # plt.show()
 
+#   norm_axis = 0
+#   mean = np.mean(mel_fp32, axis=norm_axis)
+#   std_dev = np.std(mel_fp32, axis=norm_axis)
+
+#   print(mean.shape)
