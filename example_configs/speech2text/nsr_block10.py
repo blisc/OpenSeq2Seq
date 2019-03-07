@@ -198,7 +198,7 @@ base_params = {
         "normalization": normalization,
         "activation_fn": activation,
         "data_format": "channels_last",
-        "use_conv_mask": False,
+        "use_conv_mask": True,
     },
 
     "decoder": FullyConnectedCTCDecoder,
@@ -228,6 +228,7 @@ base_params = {
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
         "norm_per_feature": False,
         "window_type": 'hanning',
+        "librosa": False,
         "syn_enable": False,
         "syn_subdirs" :["1_50", "2_44", "3_47", "50", "46", "48"]
     },

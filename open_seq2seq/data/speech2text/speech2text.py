@@ -4,6 +4,8 @@
 from __future__ import absolute_import, division, print_function
 from __future__ import unicode_literals
 
+import librosa
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -48,7 +50,8 @@ class Speech2TextDataLayer(DataLayer):
         'window_stride': float,
         'dither': float,
         'norm_per_feature': bool,
-        'window_type': ['hanning', 'hamming', 'none']
+        'window_type': ['hanning', 'hamming', 'none'],
+        'librosa': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -115,6 +118,20 @@ class Speech2TextDataLayer(DataLayer):
     self._files = None
     if self.params["interactive"]:
       return
+
+    if self.params.get("librosa", False):
+      self.mel_basis = librosa.filters.mel(
+          sr=16000,
+          n_fft=512,
+          n_mels=self.params['num_audio_features'],
+          htk=True,
+          norm=None,
+          fmin=0,
+          fmax=8000
+      )
+    else:
+      self.mel_basis = None
+
     for csv in params['dataset_files']:
       files = pd.read_csv(csv, encoding='utf-8')
       if self._files is None:
@@ -364,7 +381,8 @@ class Speech2TextDataLayer(DataLayer):
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', 512),
         norm_per_feature=self.params.get('norm_per_feature', False),
-        params=self.params
+        params=self.params,
+        mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), \
@@ -417,7 +435,9 @@ class Speech2TextDataLayer(DataLayer):
         window_fn=self.window_fns[self.params.get('window', "hanning")] if self.apply_window else None,
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', 512),
-        norm_per_feature=self.params.get('norm_per_feature', False)
+        norm_per_feature=self.params.get('norm_per_feature', False),
+        params=self.params,
+        mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([idx]), \
