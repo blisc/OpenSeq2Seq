@@ -5,6 +5,9 @@ from __future__ import unicode_literals
 import math
 import os
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
 import h5py
 import numpy as np
 import python_speech_features as psf
@@ -305,7 +308,7 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
     signal += dither*np.random.randn(*signal.shape)
     
   # make int16
-  signal = (signal * 32767.0).astype(np.int16)
+  # signal = (signal * 32767.0).astype(np.int16)
 
   if features_type == 'spectrogram':
     frames = psf.sigproc.framesig(sig=signal,
@@ -380,10 +383,90 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
 
 
 # if __name__ == "__main__":
-#   feature, _ = get_speech_features_from_file(
-#       "/mnt/hdd/data/Librispeech/librispeech/LibriSpeech/test-clean-wav/61-70968-0000.wav",
-#       64,
-#       features_type="logfbank",
-#       window_fn=np.hanning
+#   sample_freq, signal = wave.read("/mnt/hdd/data/Librispeech/librispeech/LibriSpeech/test-clean-wav/61-70968-0000.wav")
+#   print(signal)
+#   signal = normalize_signal(signal.astype(np.float32))
+#   print(signal)
+#   n_window_size = int(sample_freq * 20e-3)
+#   n_window_stride = int(sample_freq * 10e-3)
+
+#   pad_to=8
+
+#   # making sure length of the audio is divisible by 8 (fp16 optimization)
+#   length = 1 + int(math.ceil(
+#       (1.0 * signal.shape[0] - n_window_size) / n_window_stride
+#   ))
+
+#   if pad_to > 0:
+#     if length % pad_to != 0:
+#       pad_size = (pad_to - length % pad_to) * n_window_stride
+#       signal = np.pad(signal, (0, pad_size), mode='constant')
+
+#   frames = psf.sigproc.framesig(sig=signal,
+#                                 frame_len=n_window_size,
+#                                 frame_step=n_window_stride,
+#                                 winfunc=np.hanning)
+
+#   # features = np.log1p(psf.sigproc.powspec(frames, NFFT=N_window_size))
+#   features_fp32 = psf.sigproc.logpowspec(frames, NFFT=512)
+#   # print(features.shape)
+
+#   mel_fp32 = psf.logfbank(signal=signal,
+#                               samplerate=sample_freq,
+#                               winlen=20e-3,
+#                               winstep=10e-3,
+#                               nfilt=64,
+#                               nfft=512,
+#                               lowfreq=0, highfreq=sample_freq / 2,
+#                               preemph=0.97)
+
+#   signal = (signal * 32767.0).astype(np.int16)
+
+#   frames = psf.sigproc.framesig(sig=signal,
+#                                 frame_len=n_window_size,
+#                                 frame_step=n_window_stride,
+#                                 winfunc=np.hanning)
+
+#   # features = np.log1p(psf.sigproc.powspec(frames, NFFT=N_window_size))
+#   features_int16 = psf.sigproc.logpowspec(frames, NFFT=512)
+#   # print(features.shape)
+
+#   mel_int16 = psf.logfbank(signal=signal,
+#                             samplerate=sample_freq,
+#                             winlen=20e-3,
+#                             winstep=10e-3,
+#                             nfilt=64,
+#                             nfft=512,
+#                             lowfreq=0, highfreq=sample_freq / 2,
+#                             preemph=0.97)
+
+#   fig, ax = plt.subplots(nrows=4, figsize=(8, 4 * 3))
+
+#   colour = ax[0].imshow(
+#       features_fp32.T, cmap='viridis', interpolation=None, aspect='auto'
 #   )
-#   print(feature.shape)
+#   ax[0].invert_yaxis()
+#   fig.colorbar(colour, ax=ax[0])
+
+#   colour = ax[1].imshow(
+#       features_int16.T, cmap='viridis', interpolation=None, aspect='auto'
+#   )
+#   ax[1].invert_yaxis()
+#   fig.colorbar(colour, ax=ax[1])
+
+#   colour = ax[2].imshow(
+#       mel_fp32.T, cmap='viridis', interpolation=None, aspect='auto'
+#   )
+#   ax[2].invert_yaxis()
+#   fig.colorbar(colour, ax=ax[2])
+
+#   colour = ax[3].imshow(
+#       mel_int16.T, cmap='viridis', interpolation=None, aspect='auto'
+#   )
+#   ax[3].invert_yaxis()
+#   fig.colorbar(colour, ax=ax[3])
+
+#   plt.xlabel('time')
+#   plt.tight_layout()
+#   plt.show()
+
