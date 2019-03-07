@@ -377,3 +377,13 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   std_dev = np.std(features, axis=norm_axis)
   features = (features - mean) / std_dev
   return features, audio_duration
+
+
+# if __name__ == "__main__":
+#   feature, _ = get_speech_features_from_file(
+#       "/mnt/hdd/data/Librispeech/librispeech/LibriSpeech/test-clean-wav/61-70968-0000.wav",
+#       64,
+#       features_type="logfbank",
+#       window_fn=np.hanning
+#   )
+#   print(feature.shape)
