@@ -6,6 +6,9 @@ import math
 import os
 import librosa
 
+# import matplotlib as mpl
+# import matplotlib.pyplot as plt
+
 import h5py
 import numpy as np
 import python_speech_features as psf
@@ -290,10 +293,14 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
     num_features].
     audio_duration (float): duration of the signal in seconds
   """
+  signal = signal.astype(np.float32)
+  if dither > 0:
+    signal += dither*np.random.randn(*signal.shape)
+
   if augmentation:
-    signal = augment_audio_signal(signal.astype(np.float32), sample_freq, augmentation)
+    signal = augment_audio_signal(signal, sample_freq, augmentation)
   else:
-    signal = normalize_signal(signal.astype(np.float32))
+    signal = normalize_signal(signal)
 
   audio_duration = len(signal) * 1.0 / sample_freq
 
@@ -310,9 +317,7 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
       pad_size = (pad_to - length % pad_to) * n_window_stride
       signal = np.pad(signal, (0, pad_size), mode='constant')
 
-  if dither > 0:
-    signal += dither*np.random.randn(*signal.shape)
-    
+
   # make int16
   # signal = (signal * 32767.0).astype(np.int16)
 
@@ -381,7 +386,7 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
 
-  norm_axis = 0 if norm_per_feature else None
+  norm_axis = 1 if norm_per_feature else None
   mean = np.mean(features, axis=norm_axis)
   std_dev = np.std(features, axis=norm_axis)
   features = (features - mean) / std_dev
@@ -466,7 +471,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
 
 #   # features = np.log1p(psf.sigproc.powspec(frames, NFFT=N_window_size))
 #   features_fp32 = psf.sigproc.logpowspec(frames, NFFT=512)
-#   # print(features.shape)
+#   print(features_fp32.shape)
 
 #   mel_fp32 = psf.logfbank(signal=signal,
 #                               samplerate=sample_freq,
@@ -476,6 +481,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
 #                               nfft=512,
 #                               lowfreq=0, highfreq=sample_freq / 2,
 #                               preemph=0.97)
+#   print(mel_fp32.shape)
 
 #   signal = (signal * 32767.0).astype(np.int16)
 
