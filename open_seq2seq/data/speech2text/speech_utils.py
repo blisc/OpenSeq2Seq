@@ -392,8 +392,10 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   features = (features - mean) / std_dev
 
 
+  features_len = len(features)
   if pad_to > 0:
-    num_pad = pad_to - (len(features) % pad_to)
+    num_pad = pad_to - (features_len % pad_to)
+    num_pad = num_pad % pad_to
     features = np.pad(
         features,
         # ((8, num_pad), (0, 0)),
@@ -403,7 +405,7 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
     )
     assert features.shape[0] % pad_to == 0
 
-  return features, len(features)-num_pad, audio_duration
+  return features, features_len, audio_duration
 
 def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
                                 features_type='spectrogram',

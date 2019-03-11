@@ -389,7 +389,7 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32(source_len), \
+        np.int32([source_len]), \
         np.int32(target), \
         np.int32([len(target)]), \
         np.float32([audio_duration])
@@ -416,7 +416,7 @@ class Speech2TextDataLayer(DataLayer):
         norm_per_feature=self.params.get('norm_per_feature', False)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32(source_len), np.int32([0]), \
+        np.int32([source_len]), np.int32([0]), \
         np.float32([audio_duration])
 
   def _parse_audio_element(self, id_and_audio_filename):
@@ -444,7 +444,7 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32(source_len), np.int32([idx]), \
+        np.int32([source_len]), np.int32([idx]), \
         np.float32([audio_duration])
 
   @property
