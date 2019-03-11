@@ -52,6 +52,7 @@ class Speech2TextDataLayer(DataLayer):
         'norm_per_feature': bool,
         'window_type': ['hanning', 'hamming', 'none'],
         'librosa': bool,
+        'sp_disk': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -367,7 +368,10 @@ class Speech2TextDataLayer(DataLayer):
     if self.params.get("syn_enable", False):
       audio_filename = audio_filename.format(np.random.choice(self.params["syn_subdirs"]))
 
-    source, audio_duration = get_speech_features_from_file(
+    if self.params.get("sp_disk", False):
+      audio_filename = audio_filename.format(np.random.choice(["", "-speed-0.9", "-speed-1.1"]))
+
+    source, source_len, audio_duration = get_speech_features_from_file(
         audio_filename, self.params['num_audio_features'],
         pad_to=self.params.get('pad_to', 8),
         features_type=self.params['input_type'],
@@ -385,7 +389,7 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32([len(source)]), \
+        np.int32(source_len), \
         np.int32(target), \
         np.int32([len(target)]), \
         np.float32([audio_duration])
@@ -400,7 +404,7 @@ class Speech2TextDataLayer(DataLayer):
       sample id.
     """
     pad_to = self.params.get('pad_to', 8)
-    source, audio_duration = get_speech_features(
+    source, source_len, audio_duration = get_speech_features(
         wav, 16000., self.params['num_audio_features'], pad_to,
         features_type=self.params['input_type'],
         window_size=self.params['window_size'],
@@ -412,7 +416,7 @@ class Speech2TextDataLayer(DataLayer):
         norm_per_feature=self.params.get('norm_per_feature', False)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32([len(source)]), np.int32([0]), \
+        np.int32(source_len), np.int32([0]), \
         np.float32([audio_duration])
 
   def _parse_audio_element(self, id_and_audio_filename):
@@ -426,7 +430,7 @@ class Speech2TextDataLayer(DataLayer):
     """
     idx, audio_filename = id_and_audio_filename
     pad_to = self.params.get('pad_to', 8)
-    source, audio_duration = get_speech_features_from_file(
+    source, source_len, audio_duration = get_speech_features_from_file(
         audio_filename, self.params['num_audio_features'], pad_to,
         features_type=self.params['input_type'],
         window_size=self.params['window_size'],
@@ -440,7 +444,7 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
-        np.int32([len(source)]), np.int32([idx]), \
+        np.int32(source_len), np.int32([idx]), \
         np.float32([audio_duration])
 
   @property

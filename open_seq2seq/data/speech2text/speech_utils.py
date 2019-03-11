@@ -11,9 +11,9 @@ import librosa
 
 import h5py
 import numpy as np
-import python_speech_features as psf
-import resampy as rs
 import scipy.io.wavfile as wave
+import resampy as rs
+import python_speech_features as psf
 
 
 class PreprocessOnTheFlyException(Exception):
@@ -91,7 +91,7 @@ def get_preprocessed_data_path(filename, params):
       generated from the relevant preprocessing parameters.
   """
   if isinstance(filename, bytes):  # convert binary string to normal string
-      filename = filename.decode('ascii')
+    filename = filename.decode('ascii')
 
   filename = os.path.realpath(filename)  # decode symbolic links
 
@@ -202,7 +202,7 @@ Returns:
       )
     else:
       sample_freq, signal = wave.read(filename)
-      features, duration = get_speech_features(
+      features, feature_len, duration = get_speech_features(
           signal, sample_freq, num_features, pad_to, features_type,
           window_size, window_stride, augmentation, window_fn=window_fn,
           dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft
@@ -210,7 +210,7 @@ Returns:
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
     sample_freq, signal = wave.read(filename)
-    features, duration = get_speech_features(
+    features, _, duration = get_speech_features(
         signal, sample_freq, num_features, pad_to, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft
@@ -219,7 +219,7 @@ Returns:
     save_features(features, duration, preprocessed_data_path,
                   data_format=cache_format)
 
-  return features, duration
+  return features, feature_len, duration
 
 
 def normalize_signal(signal):
@@ -308,14 +308,14 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   n_window_stride = int(sample_freq * window_stride)
 
   # making sure length of the audio is divisible by 8 (fp16 optimization)
-  length = 1 + int(math.ceil(
-      (1.0 * signal.shape[0] - n_window_size) / n_window_stride
-  ))
+  # length = 1 + int(math.ceil(
+  #     (1.0 * signal.shape[0] - n_window_size) / n_window_stride
+  # ))
 
-  if pad_to > 0:
-    if length % pad_to != 0:
-      pad_size = (pad_to - length % pad_to) * n_window_stride
-      signal = np.pad(signal, (0, pad_size), mode='constant')
+  # if pad_to > 0:
+  #   if length % pad_to != 0:
+  #     pad_size = (pad_to - length % pad_to) * n_window_stride
+  #     signal = np.pad(signal, (0, pad_size), mode='constant')
 
 
   # make int16
@@ -390,15 +390,28 @@ def get_speech_features(signal, sample_freq, num_features, pad_to=8,
   mean = np.mean(features, axis=norm_axis)
   std_dev = np.std(features, axis=norm_axis)
   features = (features - mean) / std_dev
-  return features, audio_duration
+
+
+  if pad_to > 0:
+    num_pad = pad_to - (len(features) % pad_to)
+    features = np.pad(
+        features,
+        # ((8, num_pad), (0, 0)),
+        ((0, num_pad), (0, 0)),
+        "constant",
+        constant_values=0
+    )
+    assert features.shape[0] % pad_to == 0
+
+  return features, len(features)-num_pad, audio_duration
 
 def get_speech_features_librosa(signal, sample_freq, num_features, pad_to=8,
-                        features_type='spectrogram',
-                        window_size=20e-3,
-                        window_stride=10e-3,
-                        augmentation=None,
-                        mel_basis=None,
-                        normalize=True):
+                                features_type='spectrogram',
+                                window_size=20e-3,
+                                window_stride=10e-3,
+                                augmentation=None,
+                                mel_basis=None,
+                                normalize=True):
   signal = normalize_signal(signal.astype(np.float32))
   audio_duration = len(signal) * 1.0 / sample_freq
 

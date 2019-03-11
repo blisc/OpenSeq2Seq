@@ -226,8 +226,8 @@ base_params = {
         "num_audio_features": 64,
         "input_type": "logfbank",
         "vocab_file": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
-        "norm_per_feature": False,
-        "window_type": "hanning",
+        "norm_per_feature": True,
+        "window_type": "hamming",
         "librosa": False,
         "syn_enable": False,
         "syn_subdirs" :["1_50", "2_44", "3_47", "50", "46", "48"]
@@ -241,7 +241,8 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "dither": 0.,
+        "dither": 0.5,
+        "sp_disk": False,
         # "syn_ver": 3,
     },
 }
