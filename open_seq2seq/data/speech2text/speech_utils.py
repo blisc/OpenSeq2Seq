@@ -327,6 +327,18 @@ def get_speech_features(signal, sample_freq, num_features,
 
     # cut high frequency part
     features = features[:, :num_features]
+  elif features_type == 'magspec':
+    mag = np.abs(librosa.stft(signal, n_fft=num_fft,
+                              hop_length=n_window_stride,
+                              win_length=n_window_size,
+                              center=True, window=window_fn))
+    features = np.log(np.clip(mag, a_min=1e-10, a_max=None)).T
+
+    assert num_features <= n_window_size // 2 + 1, \
+        "num_features for spectrogram should be <= (fs * window_size // 2 + 1)"
+
+    # cut high frequency part
+    features = features[:, :num_features]
 
   elif features_type == 'mfcc':
     signal = preemphasis(signal, coeff=0.97)
