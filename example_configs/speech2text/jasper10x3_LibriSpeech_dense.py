@@ -11,7 +11,7 @@ normalization = "batch_norm"
 activation = tf.nn.relu
 # gate_activation = None
 
-mode = "denser" #"dense" or "denser"
+mode = "dense" #"dense" or "denser"
 repeat_1 = 3
 repeat_2 = 3
 dropout_factor = 1.
@@ -108,49 +108,49 @@ base_params = {
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [11], "stride": [1],
-                "num_channels": 192, "padding": "SAME",
+                "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [11], "stride": [1],
-                "num_channels": 192, "padding": "SAME",
+                "num_channels": 256, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [13], "stride": [1],
-                "num_channels": 280, "padding": "SAME",
+                "num_channels": 320, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [13], "stride": [1],
-                "num_channels": 280, "padding": "SAME",
+                "num_channels": 320, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [17], "stride": [1],
-                "num_channels": 384, "padding": "SAME",
+                "num_channels": 400, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [17], "stride": [1],
-                "num_channels": 384, "padding": "SAME",
+                "num_channels": 400, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.8 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_1,
                 "kernel_size": [21], "stride": [1],
-                "num_channels": 480, "padding": "SAME",
+                "num_channels": 464, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
             },
             {
                 "type": "conv1d", "repeat": repeat_2,
                 "kernel_size": [21], "stride": [1],
-                "num_channels": 480, "padding": "SAME",
+                "num_channels": 464, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.7 * dropout_factor,
             },
             {
