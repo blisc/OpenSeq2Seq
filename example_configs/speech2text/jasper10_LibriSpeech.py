@@ -244,6 +244,8 @@ train_params = {
         "max_duration": 16.7,
         "shuffle": True,
         "dither": 1e-5,
+        "delta": True,
+        "delta_delta": True,
     },
 }
 

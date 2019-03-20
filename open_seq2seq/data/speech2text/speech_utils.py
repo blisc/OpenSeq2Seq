@@ -375,10 +375,10 @@ def get_speech_features(signal, sample_freq, num_features,
   spec = features
   if delta:
     features_d = librosa.feature.delta(spec)
-    features.append(features_d)
+    features = np.append(features, features_d, axis=-1)
   if delta_delta:
     features_d_d = librosa.feature.delta(spec, order=2)
-    features.append(features_d_d)
+    features = np.append(features, features_d_d, axis=-1)
 
   norm_axis = 0 if norm_per_feature else None
   mean = np.mean(features, axis=norm_axis)
