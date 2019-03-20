@@ -140,6 +140,8 @@ def get_speech_features_from_file(filename,
                                   dither=0,
                                   num_fft=None,
                                   norm_per_feature=False,
+                                  delta=False,
+                                  delta_delta=False,
                                   cache_features=False,
                                   cache_format="hdf5",
                                   cache_regenerate=False,
@@ -200,7 +202,7 @@ Returns:
         signal, sample_freq, num_features, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
-        mel_basis=mel_basis
+        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta
     )
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
@@ -215,7 +217,7 @@ Returns:
         signal, sample_freq, num_features, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
-        mel_basis=mel_basis
+        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta
     )
     preprocessed_data_path = get_preprocessed_data_path(filename, params)
     save_features(features, duration, preprocessed_data_path,
@@ -278,7 +280,10 @@ def get_speech_features(signal, sample_freq, num_features,
                         num_fft=None,
                         dither=0.0,
                         norm_per_feature=False,
-                        mel_basis=None):
+                        mel_basis=None,
+                        delta=False,
+                        delta_delta=False):
+
   """Function to convert raw audio signal to numpy array of features.
 
   Args:
@@ -366,6 +371,14 @@ def get_speech_features(signal, sample_freq, num_features,
     features = np.log(np.dot(mel_basis, S) + 1e-20).T
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
+
+  spec = features
+  if delta:
+    features_d = librosa.feature.delta(spec)
+    features.append(features_d)
+  if delta_delta:
+    features_d_d = librosa.feature.delta(spec, order=2)
+    features.append(features_d_d)
 
   norm_axis = 0 if norm_per_feature else None
   mean = np.mean(features, axis=norm_axis)

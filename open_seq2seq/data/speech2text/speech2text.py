@@ -53,6 +53,8 @@ class Speech2TextDataLayer(DataLayer):
         'num_fft': int,
         'precompute_mel_basis': bool,
         'sample_freq': int,
+        'delta': bool,
+        'delta_delta': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -379,6 +381,8 @@ class Speech2TextDataLayer(DataLayer):
         window_stride=self.params['window_stride'],
         augmentation=self.params.get('augmentation', None),
         window_fn=self.window_fns[self.params.get('window', "hanning")],
+        delta=self.params.get('delta', False),
+        delta_delta=self.params.get('delta_delta', False),
         cache_features=self.params.get('cache_features', False),
         cache_format=self.params.get('cache_format', 'hdf5'),
         cache_regenerate=self.params.get('cache_regenerate', False),
@@ -413,7 +417,9 @@ class Speech2TextDataLayer(DataLayer):
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
-        mel_basis=self.mel_basis
+        mel_basis=self.mel_basis,
+        delta=self.params.get('delta', False),
+        delta_delta=self.params.get('delta_delta', False),
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([0]), \
@@ -440,7 +446,9 @@ class Speech2TextDataLayer(DataLayer):
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
         params=self.params,
-        mel_basis=self.mel_basis
+        mel_basis=self.mel_basis,
+        delta=self.params.get('delta', False),
+        delta_delta=self.params.get('delta_delta', False),
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([idx]), \
