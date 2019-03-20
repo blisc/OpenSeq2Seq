@@ -115,6 +115,13 @@ class Speech2TextDataLayer(DataLayer):
     self.target_pad_value = 0
 
     self._files = None
+
+    self._padded_features = self.params['num_audio_features']
+    if self.params.get("delta", False):
+      self._padded_features += self.params['num_audio_features']
+    if self.params.get("delta_delta", False):
+      self._padded_features += self.params['num_audio_features']
+
     if self.params["interactive"]:
       return
     for csv in params['dataset_files']:
@@ -212,7 +219,7 @@ class Speech2TextDataLayer(DataLayer):
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
-            padded_shapes=([None, self.params['num_audio_features']],
+            padded_shapes=([None, self._padded_features],
                            1, [None], 1),
             padding_values=(
                 tf.cast(0, self.params['dtype']), 0, self.target_pad_value, 0),
@@ -247,7 +254,7 @@ class Speech2TextDataLayer(DataLayer):
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
-            padded_shapes=([None, self.params['num_audio_features']], 1, 1)
+            padded_shapes=([None, self._padded_features], 1, 1)
         )
 
       self._iterator = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)\
@@ -264,7 +271,7 @@ class Speech2TextDataLayer(DataLayer):
         x_id = tf.reshape(x_id, [self.params['batch_size']])
 
       x.set_shape([self.params['batch_size'], None,
-                   self.params['num_audio_features']])
+                   self._padded_features])
       x_length = tf.reshape(x_length, [self.params['batch_size']])
 
       pad_to = self.params.get("pad_to", 8)
@@ -285,7 +292,7 @@ class Speech2TextDataLayer(DataLayer):
         shape=[
             self.params['batch_size'],
             None,
-            self.params['num_audio_features']
+            self._padded_features
         ]
     )
     self._x_length = tf.placeholder(
