@@ -102,10 +102,10 @@ def get_preprocessed_data_path(filename, params):
   ## filter relevant parameters # TODO is there a cleaner way of doing this?
   # print(list(params.keys()))
 
-  requried_params = ["num_audio_features", "input_type", "augmentation",
-                     "window_size", "window_stride", "dither",
-                     "norm_per_feature", "window_type", "num_fft",
-                     "sample_freq", "delta", "delta_delta"]
+  requried_params = ["num_features", "features_type", "window_size",
+                     "window_stride", "window_fn", "dither", "num_fft",
+                     "norm_per_feature", "delta", "delta_delta",
+                     "sample_freq_param"]
 
   def fix_kv(text):
     """ Helper function to shorten length of filenames to get around
@@ -116,8 +116,9 @@ def get_preprocessed_data_path(filename, params):
       .replace("noise_level_max", "nlmax") \
       .replace("delta", "d") \
       .replace("delta_delta", "dd") \
-      .replace("num_audio_features", "nfeats") \
-      .replace("norm_per_feature", "npf")
+      .replace("num_features", "nfeats") \
+      .replace("norm_per_feature", "npf") \
+      .replace("sample_freq_param", "fs")
     return text
 
   # generate the identifier by simply concatenating preprocessing key-value
@@ -145,7 +146,7 @@ def get_speech_features_from_file(filename,
                                   window_size=20e-3,
                                   window_stride=10e-3,
                                   augmentation=None,
-                                  window_fn=None,
+                                  window_fn=np.hanning,
                                   dither=0,
                                   num_fft=None,
                                   norm_per_feature=False,
@@ -154,7 +155,7 @@ def get_speech_features_from_file(filename,
                                   cache_features=False,
                                   cache_format="hdf5",
                                   cache_regenerate=False,
-                                  params={},
+                                  sample_freq_param=None,
                                   mel_basis=None):
   """Function to get a numpy array of features, from an audio file.
       if params['cache_features']==True, try load preprocessed data from
@@ -187,6 +188,7 @@ Returns:
   np.array: np.array of audio features with shape=[num_time_steps,
   num_features].
 """
+  params = locals()
   try:
     if not cache_features:
       raise PreprocessOnTheFlyException(
@@ -201,10 +203,10 @@ Returns:
 
   except PreprocessOnTheFlyException:
     sample_freq, signal = wave.read(filename)
-    if mel_basis is not None and sample_freq != params["sample_freq"]:
+    if mel_basis is not None and sample_freq != sample_freq_param:
       raise ValueError(
           ("The sampling frequency set in params {} does not match the "
-           "frequency {} read from file {}").format(params["sample_freq"],
+           "frequency {} read from file {}").format(sample_freq_param,
                                                     sample_freq, filename)
       )
     features, duration = get_speech_features(
@@ -216,10 +218,10 @@ Returns:
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
     sample_freq, signal = wave.read(filename)
-    if mel_basis is not None and sample_freq != params["sample_freq"]:
+    if mel_basis is not None and sample_freq != sample_freq_param:
       raise ValueError(
           ("The sampling frequency set in params {} does not match the "
-           "frequency {} read from file {}").format(params["sample_freq"],
+           "frequency {} read from file {}").format(sample_freq_param,
                                                     sample_freq, filename)
       )
     features, duration = get_speech_features(

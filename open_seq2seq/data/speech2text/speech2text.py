@@ -150,10 +150,10 @@ class Speech2TextDataLayer(DataLayer):
     self.params['window_stride'] = self.params.get('window_stride', 10e-3)
 
     self.mel_basis = None
-    if (self.params.get("precompute_mel_basis", False) and 
+    if (self.params.get("precompute_mel_basis", False) and
         self.params["input_type"] == "logfbank"):
       num_fft = (
-          self.params.get("num_fft", None) or 
+          self.params.get("num_fft", None) or
           2**math.ceil(math.log2(
               self.params['window_size']*self.params["sample_freq"])
           )
@@ -209,8 +209,8 @@ class Speech2TextDataLayer(DataLayer):
           )
         if self.params['min_duration'] > 0:
           self._dataset = self._dataset.filter(
-            lambda x, x_len, y, y_len, duration:
-            tf.greater_equal(duration, self.params['min_duration'])
+              lambda x, x_len, y, y_len, duration:
+              tf.greater_equal(duration, self.params['min_duration'])
           )
         self._dataset = self._dataset.map(
             lambda x, x_len, y, y_len, duration:
@@ -337,7 +337,7 @@ class Speech2TextDataLayer(DataLayer):
     max_len = np.max(audio_length_arr)
     for i, audio in enumerate(audio_arr):
       audio = np.pad(
-          audio, ((0, max_len-len(audio)), (0,0)),
+          audio, ((0, max_len-len(audio)), (0, 0)),
           "constant", constant_values=0.
       )
       audio_arr[i] = audio
@@ -396,7 +396,7 @@ class Speech2TextDataLayer(DataLayer):
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
-        params=self.params,
+        sample_freq_param=self.params.get('sample_freq', None),
         mel_basis=self.mel_basis
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
@@ -452,10 +452,10 @@ class Speech2TextDataLayer(DataLayer):
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
-        params=self.params,
         mel_basis=self.mel_basis,
         delta=self.params.get('delta', False),
         delta_delta=self.params.get('delta_delta', False),
+        sample_freq_param=self.params.get('sample_freq', None)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([idx]), \
@@ -478,4 +478,3 @@ class Speech2TextDataLayer(DataLayer):
   def get_size_in_samples(self):
     """Returns the number of audio files."""
     return len(self._files)
-
