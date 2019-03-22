@@ -95,19 +95,17 @@ def get_preprocessed_data_path(filename, params):
   savepath = params.get("cache_save_dir", False)
   if savepath:
     filename = os.path.realpath(savepath)
-    filename = filename + wavfile
+    filename = os.path.join(filename, wavfile)
   else:
     filename = os.path.realpath(filename)  # decode symbolic links
 
   ## filter relevant parameters # TODO is there a cleaner way of doing this?
   # print(list(params.keys()))
 
-  ignored_params = ["batch_size", "shuffle", "repeat", "dtype", "interactive"
-                    "vocab_file", "dataset_files", "pad_to", "max_duration",
-                    "min_duration", "bpe", "autoregressive", "syn_enable",
-                    "syn_subdirs", "precompute_mel_basis", "cache_features",
-                    "cache_format", "cache_regenerate", "cache_save_dir",
-                    "mode", "char2idx", "tgt_vocab_size", "idx2char"]
+  requried_params = ["num_audio_features", "input_type", "augmentation",
+                     "window_size", "window_stride", "dither",
+                     "norm_per_feature", "window_type", "num_fft",
+                     "sample_freq", "delta", "delta_delta"]
 
   def fix_kv(text):
     """ Helper function to shorten length of filenames to get around
@@ -125,8 +123,7 @@ def get_preprocessed_data_path(filename, params):
   # generate the identifier by simply concatenating preprocessing key-value
   # pairs as strings.
   preprocess_id = "-".join(
-      [fix_kv(k) + "_" + fix_kv(v) for k, v in params.items() if
-       k not in ignored_params])
+      [fix_kv(k) + "_" + fix_kv(params[k]) for k in requried_params])
 
   preprocessed_dir = os.path.dirname(filename).replace("wav",
                                                        "preprocessed-" +

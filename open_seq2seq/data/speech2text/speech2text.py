@@ -55,10 +55,6 @@ class Speech2TextDataLayer(DataLayer):
         'sample_freq': int,
         'delta': bool,
         'delta_delta': bool,
-        'cache_features': bool,
-        'cache_format': ['npy', 'npz', 'hdf5'],
-        'cache_regenerate': bool,
-        'cache_save_dir': str,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
