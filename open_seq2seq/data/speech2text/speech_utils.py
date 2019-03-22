@@ -89,7 +89,15 @@ def get_preprocessed_data_path(filename, params):
   if isinstance(filename, bytes):  # convert binary string to normal string
     filename = filename.decode('ascii')
 
-  filename = os.path.realpath(filename)  # decode symbolic links
+  wavfile = filename.split("/")[-2:]
+  wavfile = "/".join(wavfile)
+
+  savepath = params.get("cache_save_dir", False)
+  if savepath:
+    filename = os.path.realpath(savepath)
+    filename = filename + wavfile
+  else:
+    filename = os.path.realpath(filename)  # decode symbolic links
 
   ## filter relevant parameters # TODO is there a cleaner way of doing this?
   # print(list(params.keys()))
@@ -106,8 +114,8 @@ def get_preprocessed_data_path(filename, params):
     text = text.replace("time_stretch_ratio", "tsr") \
       .replace("noise_level_min", "nlmin", ) \
       .replace("noise_level_max", "nlmax") \
-      .replace("add_derivatives", "d") \
-      .replace("add_second_derivatives", "dd")
+      .replace("delta", "d") \
+      .replace("delta_delta", "dd")
     return text
 
   # generate the identifier by simply concatenating preprocessing key-value

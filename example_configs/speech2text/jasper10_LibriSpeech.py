@@ -235,6 +235,8 @@ base_params = {
         "pad_to": 16,
         "delta": False,
         "delta_delta": False,
+        "cache_features": False,
+        "cache_save_dir": "/mnt/librispeech-cache",
     },
 }
 
