@@ -77,7 +77,7 @@ def save_features(features, duration, path, data_format, verbose=False):
                      "options: hdf5, npy, npz")
 
 
-def get_preprocessed_data_path(filename, params):
+def get_preprocessed_data_path(filename, params, cache_save_dir=None):
   """ Function to convert the audio path into the path to the preprocessed
   version of this audio
   Args:
@@ -92,9 +92,8 @@ def get_preprocessed_data_path(filename, params):
   wavfile = filename.split("/")[-2:]
   wavfile = "/".join(wavfile)
 
-  savepath = params.get("cache_save_dir", False)
-  if savepath:
-    filename = os.path.realpath(savepath)
+  if cache_save_dir:
+    filename = os.path.realpath(cache_save_dir)
     filename = os.path.join(filename, wavfile)
   else:
     filename = os.path.realpath(filename)  # decode symbolic links
@@ -146,7 +145,7 @@ def get_speech_features_from_file(filename,
                                   window_size=20e-3,
                                   window_stride=10e-3,
                                   augmentation=None,
-                                  window_fn=np.hanning,
+                                  window_fn="hanning",
                                   dither=0,
                                   num_fft=None,
                                   norm_per_feature=False,
@@ -155,6 +154,7 @@ def get_speech_features_from_file(filename,
                                   cache_features=False,
                                   cache_format="hdf5",
                                   cache_regenerate=False,
+                                  cache_save_dir=None,
                                   sample_freq_param=None,
                                   mel_basis=None):
   """Function to get a numpy array of features, from an audio file.
@@ -197,7 +197,7 @@ Returns:
     if cache_regenerate:
       raise RegenerateCacheException("regenerating cache...")
 
-    preprocessed_data_path = get_preprocessed_data_path(filename, params)
+    preprocessed_data_path = get_preprocessed_data_path(filename, params, cache_save_dir)
     features, duration = load_features(preprocessed_data_path,
                                        data_format=cache_format)
 
@@ -230,7 +230,7 @@ Returns:
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
         mel_basis=mel_basis, delta=delta, delta_delta=delta_delta
     )
-    preprocessed_data_path = get_preprocessed_data_path(filename, params)
+    preprocessed_data_path = get_preprocessed_data_path(filename, params, cache_save_dir)
     save_features(features, duration, preprocessed_data_path,
                   data_format=cache_format)
 
@@ -287,7 +287,7 @@ def get_speech_features(signal, sample_freq, num_features,
                         window_size=20e-3,
                         window_stride=10e-3,
                         augmentation=None,
-                        window_fn=np.hanning,
+                        window_fn="hanning",
                         num_fft=None,
                         dither=0.0,
                         norm_per_feature=False,
@@ -314,6 +314,9 @@ def get_speech_features(signal, sample_freq, num_features,
     num_features].
     audio_duration (float): duration of the signal in seconds
   """
+  window_fns = {"hanning": np.hanning, "hamming": np.hamming, "none": None}
+  window_fn = window_fns[window_fn]
+
   if augmentation:
     signal = augment_audio_signal(signal.astype(np.float32), sample_freq, augmentation)
   else:

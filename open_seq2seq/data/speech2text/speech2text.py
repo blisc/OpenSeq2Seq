@@ -49,7 +49,7 @@ class Speech2TextDataLayer(DataLayer):
         'window_stride': float,
         'dither': float,
         'norm_per_feature': bool,
-        'window_type': ['hanning', 'hamming', 'none'],
+        'window': ['hanning', 'hamming', 'none'],
         'num_fft': int,
         'precompute_mel_basis': bool,
         'sample_freq': int,
@@ -87,7 +87,6 @@ class Speech2TextDataLayer(DataLayer):
     """
     super(Speech2TextDataLayer, self).__init__(params, model,
                                                num_workers, worker_id)
-    self.window_fns = {"hanning": np.hanning, "hamming": np.hamming, "none": None}
     self.params['autoregressive'] = self.params.get('autoregressive', False)
     self.autoregressive = self.params['autoregressive']
     self.params['bpe'] = self.params.get('bpe', False)
@@ -387,12 +386,13 @@ class Speech2TextDataLayer(DataLayer):
         window_size=self.params['window_size'],
         window_stride=self.params['window_stride'],
         augmentation=self.params.get('augmentation', None),
-        window_fn=self.window_fns[self.params.get('window', "hanning")],
+        window_fn=self.params.get('window', "hanning"),
         delta=self.params.get('delta', False),
         delta_delta=self.params.get('delta_delta', False),
         cache_features=self.params.get('cache_features', False),
         cache_format=self.params.get('cache_format', 'hdf5'),
         cache_regenerate=self.params.get('cache_regenerate', False),
+        cache_save_dir=self.params.get('cache_save_dir', False),
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
@@ -420,7 +420,7 @@ class Speech2TextDataLayer(DataLayer):
         window_size=self.params['window_size'],
         window_stride=self.params['window_stride'],
         augmentation=self.params.get('augmentation', None),
-        window_fn=self.window_fns[self.params.get('window', "hanning")],
+        window_fn=self.params.get('window', "hanning"),
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
@@ -448,7 +448,7 @@ class Speech2TextDataLayer(DataLayer):
         window_size=self.params['window_size'],
         window_stride=self.params['window_stride'],
         augmentation=self.params.get('augmentation', None),
-        window_fn=self.window_fns[self.params.get('window', "hanning")],
+        window_fn=self.params.get('window', "hanning"),
         dither=self.params.get('dither', 0.0),
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
