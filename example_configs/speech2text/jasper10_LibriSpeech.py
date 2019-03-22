@@ -232,7 +232,9 @@ base_params = {
         "syn_subdirs": ["1_50", "2_44", "3_47", "50", "46", "48"],
         "precompute_mel_basis": True,
         "sample_freq": 16000,
-        "pad_to": 16
+        "pad_to": 16,
+        "delta": False,
+        "delta_delta": False,
     },
 }
 
@@ -244,8 +246,6 @@ train_params = {
         "max_duration": 16.7,
         "shuffle": True,
         "dither": 1e-5,
-        "delta": False,
-        "delta_delta": False,
     },
 }
 
