@@ -101,11 +101,13 @@ def get_preprocessed_data_path(filename, params):
 
   ## filter relevant parameters # TODO is there a cleaner way of doing this?
   # print(list(params.keys()))
-  ignored_params = ["cache_features", "cache_format", "cache_regenerate",
-                    "vocab_file", "dataset_files", "shuffle", "batch_size",
-                    "max_duration",
-                    "mode", "interactive", "autoregressive", "char2idx",
-                    "tgt_vocab_size", "idx2char", "dtype"]
+
+  ignored_params = ["batch_size", "shuffle", "repeat", "dtype", "interactive"
+                    "vocab_file", "dataset_files", "pad_to", "max_duration",
+                    "min_duration", "bpe", "autoregressive", "syn_enable",
+                    "syn_subdirs", "precompute_mel_basis", "cache_features",
+                    "cache_format", "cache_regenerate", "cache_save_dir",
+                    "mode", "char2idx", "tgt_vocab_size", "idx2char"]
 
   def fix_kv(text):
     """ Helper function to shorten length of filenames to get around
@@ -115,7 +117,9 @@ def get_preprocessed_data_path(filename, params):
       .replace("noise_level_min", "nlmin", ) \
       .replace("noise_level_max", "nlmax") \
       .replace("delta", "d") \
-      .replace("delta_delta", "dd")
+      .replace("delta_delta", "dd") \
+      .replace("num_audio_features", "nfeats") \
+      .replace("norm_per_feature", "npf")
     return text
 
   # generate the identifier by simply concatenating preprocessing key-value

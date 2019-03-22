@@ -46,8 +46,9 @@ class DataLayer:
         'dtype': [tf.float32, tf.float16],
         'interactive': bool,
         'cache_features': bool,
-        'cache_format': str,
-        'cache_regenerate': bool
+        'cache_format': ['npy', 'npz', 'hdf5'],
+        'cache_regenerate': bool,
+        'cache_save_dir': str,
     }
 
   @abc.abstractmethod
