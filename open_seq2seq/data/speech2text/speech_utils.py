@@ -156,7 +156,8 @@ def get_speech_features_from_file(filename,
                                   cache_regenerate=False,
                                   cache_save_dir=None,
                                   sample_freq_param=None,
-                                  mel_basis=None):
+                                  mel_basis=None,
+                                  pad_to=16):
   """Function to get a numpy array of features, from an audio file.
       if params['cache_features']==True, try load preprocessed data from
       disk, or store after preprocesseng.
@@ -213,7 +214,7 @@ Returns:
         signal, sample_freq, num_features, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
-        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta
+        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta, pad_to=pad_to
     )
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
@@ -228,7 +229,7 @@ Returns:
         signal, sample_freq, num_features, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
-        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta
+        mel_basis=mel_basis, delta=delta, delta_delta=delta_delta, pad_to=pad_to
     )
     preprocessed_data_path = get_preprocessed_data_path(filename, params, cache_save_dir)
     save_features(features, duration, preprocessed_data_path,
@@ -293,7 +294,8 @@ def get_speech_features(signal, sample_freq, num_features,
                         norm_per_feature=False,
                         mel_basis=None,
                         delta=False,
-                        delta_delta=False):
+                        delta_delta=False,
+                        pad_to=16):
 
   """Function to convert raw audio signal to numpy array of features.
 
@@ -400,9 +402,9 @@ def get_speech_features(signal, sample_freq, num_features,
   features = (features - mean) / std_dev
 
   # now it is safe to pad
-  # if pad_to > 0:
-  #   if features.shape[0] % pad_to != 0:
-  #     pad_size = pad_to - features.shape[0] % pad_to
-  #     if pad_size != 0:
-  #         features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
+  if pad_to > 0:
+    if features.shape[0] % pad_to != 0:
+      pad_size = pad_to - features.shape[0] % pad_to
+      if pad_size != 0:
+          features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
   return features, audio_duration

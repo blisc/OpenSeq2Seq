@@ -273,10 +273,10 @@ class Speech2TextDataLayer(DataLayer):
                    self._padded_features])
       x_length = tf.reshape(x_length, [self.params['batch_size']])
 
-      pad_to = self.params.get("pad_to", 8)
-      if pad_to > 0:
-        num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(x_length), pad_to), pad_to)
-        x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
+      # pad_to = self.params.get("pad_to", 8)
+      # if pad_to > 0:
+      #   num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(x_length), pad_to), pad_to)
+      #   x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
 
       self._input_tensors = {}
       self._input_tensors["source_tensors"] = [x, x_length]
@@ -397,7 +397,8 @@ class Speech2TextDataLayer(DataLayer):
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
         sample_freq_param=self.params.get('sample_freq', None),
-        mel_basis=self.mel_basis
+        mel_basis=self.mel_basis,
+        pad_to=self.params.get("pad_to", 16)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), \
@@ -427,6 +428,7 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis,
         delta=self.params.get('delta', False),
         delta_delta=self.params.get('delta_delta', False),
+        pad_to=self.params.get("pad_to", 16)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([0]), \
@@ -455,7 +457,8 @@ class Speech2TextDataLayer(DataLayer):
         mel_basis=self.mel_basis,
         delta=self.params.get('delta', False),
         delta_delta=self.params.get('delta_delta', False),
-        sample_freq_param=self.params.get('sample_freq', None)
+        sample_freq_param=self.params.get('sample_freq', None),
+        pad_to=self.params.get("pad_to", 16)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([idx]), \
