@@ -237,6 +237,7 @@ base_params = {
         "delta_delta": False,
         "cache_features": False,
         "cache_save_dir": "/mnt/librispeech-cache",
+        "dither": 1e-5,
     },
 }
 
@@ -247,7 +248,6 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "dither": 1e-5,
     },
 }
 
