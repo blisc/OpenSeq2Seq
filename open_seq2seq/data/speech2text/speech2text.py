@@ -115,11 +115,11 @@ class Speech2TextDataLayer(DataLayer):
 
     self._files = None
 
-    self._padded_features = self.params['num_audio_features']
-    if self.params.get("delta", False):
-      self._padded_features += self.params['num_audio_features']
-    if self.params.get("delta_delta", False):
-      self._padded_features += self.params['num_audio_features']
+    # self._padded_features = self.params['num_audio_features']
+    # if self.params.get("delta", False):
+    #   self._padded_features += self.params['num_audio_features']
+    # if self.params.get("delta_delta", False):
+    #   self._padded_features += self.params['num_audio_features']
 
     if self.params["interactive"]:
       return
@@ -218,7 +218,7 @@ class Speech2TextDataLayer(DataLayer):
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
-            padded_shapes=([None, self._padded_features],
+            padded_shapes=([None, self.params['num_audio_features']],
                            1, [None], 1),
             padding_values=(
                 tf.cast(0, self.params['dtype']), 0, self.target_pad_value, 0),
@@ -253,7 +253,7 @@ class Speech2TextDataLayer(DataLayer):
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
-            padded_shapes=([None, self._padded_features], 1, 1)
+            padded_shapes=([None, self.params['num_audio_features']], 1, 1)
         )
 
       self._iterator = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)\
@@ -270,7 +270,7 @@ class Speech2TextDataLayer(DataLayer):
         x_id = tf.reshape(x_id, [self.params['batch_size']])
 
       x.set_shape([self.params['batch_size'], None,
-                   self._padded_features])
+                   self.params['num_audio_features']])
       x_length = tf.reshape(x_length, [self.params['batch_size']])
 
       # pad_to = self.params.get("pad_to", 8)
@@ -291,7 +291,7 @@ class Speech2TextDataLayer(DataLayer):
         shape=[
             self.params['batch_size'],
             None,
-            self._padded_features
+            self.params['num_audio_features']
         ]
     )
     self._x_length = tf.placeholder(
@@ -387,8 +387,8 @@ class Speech2TextDataLayer(DataLayer):
         window_stride=self.params['window_stride'],
         augmentation=self.params.get('augmentation', None),
         window_fn=self.params.get('window', "hanning"),
-        delta=self.params.get('delta', False),
-        delta_delta=self.params.get('delta_delta', False),
+        # delta=self.params.get('delta', False),
+        # delta_delta=self.params.get('delta_delta', False),
         cache_features=self.params.get('cache_features', False),
         cache_format=self.params.get('cache_format', 'hdf5'),
         cache_regenerate=self.params.get('cache_regenerate', False),
@@ -426,8 +426,8 @@ class Speech2TextDataLayer(DataLayer):
         num_fft=self.params.get('num_fft', None),
         norm_per_feature=self.params.get('norm_per_feature', False),
         mel_basis=self.mel_basis,
-        delta=self.params.get('delta', False),
-        delta_delta=self.params.get('delta_delta', False),
+        # delta=self.params.get('delta', False),
+        # delta_delta=self.params.get('delta_delta', False),
         pad_to=self.params.get("pad_to", 16)
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \

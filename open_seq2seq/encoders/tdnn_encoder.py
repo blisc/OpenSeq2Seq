@@ -10,6 +10,8 @@ from open_seq2seq.parts.cnns.conv_blocks import conv_actv, conv_bn_actv,\
                                                 conv_ln_actv, conv_in_actv,\
                                                 conv_bn_res_bn_actv
 
+import scipy.signal
+
 
 class TDNNEncoder(Encoder):
   """General time delay neural network (TDNN) encoder. Fully convolutional model
@@ -98,6 +100,33 @@ class TDNNEncoder(Encoder):
     """
 
     source_sequence, src_length = input_dict['source_tensors']
+    source_sequence_mel = source_sequence
+
+    if self._model.get_data_layer().params.get("delta", False):
+      coeffs = scipy.signal.savgol_coeffs(9, 1, deriv=1, delta=1.)
+      coeffs = coeffs[::-1]
+      coeffs = tf.convert_to_tensor(coeffs, dtype=source_sequence_mel.dtype)
+      coeffs = tf.linalg.diag(tf.tile(tf.expand_dims(coeffs, -1), [1,64]))
+      delta = tf.nn.conv1d(
+          value=source_sequence_mel,
+          filters=coeffs,
+          stride=1,
+          padding="SAME"
+      )
+      source_sequence = tf.concat([source_sequence, delta], axis=-1)
+    if self._model.get_data_layer().params.get("delta_delta", False):
+      coeffs = scipy.signal.savgol_coeffs(9, 2, deriv=2, delta=1.)
+      coeffs = coeffs[::-1]
+      coeffs = tf.convert_to_tensor(coeffs, dtype=source_sequence_mel.dtype)
+      coeffs = tf.linalg.diag(tf.tile(tf.expand_dims(coeffs, -1), [1,64]))
+      delta_delta = tf.nn.conv1d(
+          value=source_sequence_mel,
+          filters=coeffs,
+          stride=1,
+          padding="SAME"
+      )
+      source_sequence = tf.concat([source_sequence, delta_delta], axis=-1)
+
     
     num_pad = tf.constant(0)
 
