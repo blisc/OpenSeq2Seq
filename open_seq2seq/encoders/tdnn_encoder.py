@@ -127,19 +127,39 @@ class TDNNEncoder(Encoder):
       )
       source_sequence = tf.concat([source_sequence, delta_delta], axis=-1)
 
-    
+    # Normalize Data
+    mask = tf.sequence_mask(
+        lengths=src_length,# maxlen=max_len,
+        dtype=source_sequence.dtype
+    )
+    mask = tf.expand_dims(mask, 2)
+    x_masked = source_sequence * mask
+    mask_count = tf.reduce_sum(mask, axis=[1], keepdims=True)
+    mean = tf.reduce_sum(x_masked, axis=[1], keepdims=True) / mask_count
+    variance = tf.reduce_sum(tf.square(source_sequence - mean) * mask, axis=[1], keepdims=True) / mask_count
+    print(mean.get_shape())
+    print(variance.get_shape())
+    source_sequence = (source_sequence - mean) / tf.sqrt(variance)
+
+    # Pad data
+    pad_to = self._model.get_data_layer().params.get("pad_to", 8)
+    if pad_to > 0:
+      num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(src_length), pad_to), pad_to)
+    #   x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
     num_pad = tf.constant(0)
+    source_sequence = tf.pad(source_sequence, [[0, 0], [0, num_pad], [0, 0]])
+    src_length + num_pad
 
-    if isinstance(self._model.get_data_layer(), Speech2TextDataLayer):
-      pad_to = self._model.get_data_layer().params.get("pad_to", 8)
-      if pad_to > 0:
-        num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(src_length), pad_to), pad_to)
-    else:
-      print("WARNING: TDNNEncoder is currently meant to be used with the",
-            "Speech2Text data layer. Assuming that this data layer does not",
-            "do additional padding past padded_batch.")
+    # if isinstance(self._model.get_data_layer(), Speech2TextDataLayer):
+    #   pad_to = self._model.get_data_layer().params.get("pad_to", 8)
+    #   if pad_to > 0:
+    #     num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(src_length), pad_to), pad_to)
+    # else:
+    #   print("WARNING: TDNNEncoder is currently meant to be used with the",
+    #         "Speech2Text data layer. Assuming that this data layer does not",
+    #         "do additional padding past padded_batch.")
 
-    max_len = tf.reduce_max(src_length) + num_pad
+    # max_len = tf.reduce_max(src_length) + num_pad
 
     training = (self._mode == "train")
     dropout_keep_prob = self.params['dropout_keep_prob'] if training else 1.0
@@ -151,7 +171,7 @@ class TDNNEncoder(Encoder):
 
     if self.params.get("use_conv_mask", False):
       mask = tf.sequence_mask(
-          lengths=src_length, maxlen=max_len,
+          lengths=src_length,# maxlen=max_len,
           dtype=source_sequence.dtype
       )
       mask = tf.expand_dims(mask, 2)
@@ -208,10 +228,10 @@ class TDNNEncoder(Encoder):
 
         if padding == "VALID":
           src_length = (src_length - kernel_size[0]) // strides[0] + 1
-          max_len = (max_len - kernel_size[0]) // strides[0] + 1
+          # max_len = (max_len - kernel_size[0]) // strides[0] + 1
         else:
           src_length = (src_length + strides[0] - 1) // strides[0]
-          max_len = (max_len + strides[0] - 1) // strides[0]
+          # max_len = (max_len + strides[0] - 1) // strides[0]
 
         # For all layers other than first layer, apply mask
         if idx_layer > 0 and self.params.get("use_conv_mask", False):
@@ -222,7 +242,7 @@ class TDNNEncoder(Encoder):
             (padding == "VALID" or strides[0] > 1)):
           mask = tf.sequence_mask(
               lengths=src_length,
-              maxlen=max_len,
+              # maxlen=max_len,
               dtype=conv_feats.dtype
           )
           mask = tf.expand_dims(mask, 2)

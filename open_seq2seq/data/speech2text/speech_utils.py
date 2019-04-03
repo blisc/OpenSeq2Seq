@@ -389,22 +389,24 @@ def get_speech_features(signal, sample_freq, num_features,
     raise ValueError('Unknown features type: {}'.format(features_type))
 
   spec = features
-  if delta:
-    features_d = librosa.feature.delta(spec)
-    features = np.append(features, features_d, axis=-1)
-  if delta_delta:
-    features_d_d = librosa.feature.delta(spec, order=2)
-    features = np.append(features, features_d_d, axis=-1)
+  # if delta:
+  #   features_d = librosa.feature.delta(spec)
+  #   features = np.append(features, features_d, axis=-1)
+  # if delta_delta:
+  #   features_d_d = librosa.feature.delta(spec, order=2)
+  #   features = np.append(features, features_d_d, axis=-1)
 
-  norm_axis = 0 if norm_per_feature else None
-  mean = np.mean(features, axis=norm_axis)
-  std_dev = np.std(features, axis=norm_axis)
-  features = (features - mean) / std_dev
+  # norm_axis = 0 if norm_per_feature else None
+  # mean = np.mean(features, axis=norm_axis)
+  # std_dev = np.std(features, axis=norm_axis)
+  # features = (features - mean) / std_dev
+  # print(mean.shape)
+  # print(std_dev.shape)
 
   # now it is safe to pad
-  if pad_to > 0:
-    if features.shape[0] % pad_to != 0:
-      pad_size = pad_to - features.shape[0] % pad_to
-      if pad_size != 0:
-          features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
+  # if pad_to > 0:
+  #   if features.shape[0] % pad_to != 0:
+  #     pad_size = pad_to - features.shape[0] % pad_to
+  #     if pad_size != 0:
+  #         features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
   return features, audio_duration
