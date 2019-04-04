@@ -140,13 +140,14 @@ class TDNNEncoder(Encoder):
     print(mean.get_shape())
     print(variance.get_shape())
     source_sequence = (source_sequence - mean) / tf.sqrt(variance)
+    source_sequence = source_sequence * mask
 
     # Pad data
+    num_pad = tf.constant(0)
     pad_to = self._model.get_data_layer().params.get("pad_to", 8)
     if pad_to > 0:
       num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(src_length), pad_to), pad_to)
     #   x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
-    num_pad = tf.constant(0)
     source_sequence = tf.pad(source_sequence, [[0, 0], [0, num_pad], [0, 0]])
     src_length + num_pad
 
