@@ -100,6 +100,8 @@ class TDNNEncoder(Encoder):
     """
 
     source_sequence, src_length = input_dict['source_tensors']
+    old_dtype = source_sequence.dtype
+    source_sequence = tf.cast(source_sequence, dtype=tf.float32)
     source_sequence_mel = source_sequence
 
     if self._model.get_data_layer().params.get("delta", False):
@@ -127,6 +129,8 @@ class TDNNEncoder(Encoder):
       )
       source_sequence = tf.concat([source_sequence, delta_delta], axis=-1)
 
+
+
     # Normalize Data
     mask = tf.sequence_mask(
         lengths=src_length,# maxlen=max_len,
@@ -141,6 +145,7 @@ class TDNNEncoder(Encoder):
     # print(variance.get_shape())
     source_sequence = (source_sequence - mean) / tf.sqrt(variance)
     source_sequence = source_sequence * mask
+    source_sequence = tf.cast(source_sequence, dtype=old_dtype)
 
     # Pad data
     num_pad = tf.constant(0)
