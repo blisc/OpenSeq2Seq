@@ -137,8 +137,8 @@ class TDNNEncoder(Encoder):
     mask_count = tf.reduce_sum(mask, axis=[1], keepdims=True)
     mean = tf.reduce_sum(x_masked, axis=[1], keepdims=True) / mask_count
     variance = tf.reduce_sum(tf.square(source_sequence - mean) * mask, axis=[1], keepdims=True) / mask_count
-    print(mean.get_shape())
-    print(variance.get_shape())
+    # print(mean.get_shape())
+    # print(variance.get_shape())
     source_sequence = (source_sequence - mean) / tf.sqrt(variance)
     source_sequence = source_sequence * mask
 
@@ -149,7 +149,7 @@ class TDNNEncoder(Encoder):
       num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(src_length), pad_to), pad_to)
     #   x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
     source_sequence = tf.pad(source_sequence, [[0, 0], [0, num_pad], [0, 0]])
-    src_length + num_pad
+    src_length += num_pad
 
     # if isinstance(self._model.get_data_layer(), Speech2TextDataLayer):
     #   pad_to = self._model.get_data_layer().params.get("pad_to", 8)
