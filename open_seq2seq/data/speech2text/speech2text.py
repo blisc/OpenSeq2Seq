@@ -206,7 +206,7 @@ class Speech2TextDataLayer(DataLayer):
         if self.params['shuffle']:
           self._dataset = self._dataset.shuffle(self._size)
         self._dataset = self._dataset.repeat()
-        self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
+        # self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
         self._dataset = self._dataset.map(
             lambda line: tf.py_func(
                 self._parse_audio_transcript_element,
@@ -214,7 +214,7 @@ class Speech2TextDataLayer(DataLayer):
                 [self.params['dtype'], tf.int32, tf.int32, tf.int32, tf.float32],
                 stateful=False,
             ),
-            num_parallel_calls=8,
+            num_parallel_calls=32,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
@@ -229,8 +229,9 @@ class Speech2TextDataLayer(DataLayer):
         self._dataset = self._dataset.map(
             lambda x, x_len, y, y_len, duration:
             [x, x_len, y, y_len],
-            num_parallel_calls=8,
+            num_parallel_calls=32,
         )
+        self._dataset = self._dataset.cache()
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
             padded_shapes=([None, self.params['num_audio_features']],
@@ -246,7 +247,7 @@ class Speech2TextDataLayer(DataLayer):
             np.hstack((indices[:, np.newaxis], self._files[:, np.newaxis]))
         )
         self._dataset = self._dataset.repeat()
-        self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
+        # self._dataset = self._dataset.prefetch(tf.contrib.data.AUTOTUNE)
         self._dataset = self._dataset.map(
             lambda line: tf.py_func(
                 self._parse_audio_element,
@@ -254,7 +255,7 @@ class Speech2TextDataLayer(DataLayer):
                 [self.params['dtype'], tf.int32, tf.int32, tf.float32],
                 stateful=False,
             ),
-            num_parallel_calls=8,
+            num_parallel_calls=32,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
@@ -269,7 +270,7 @@ class Speech2TextDataLayer(DataLayer):
         self._dataset = self._dataset.map(
             lambda x, x_len, idx, duration:
             [x, x_len, idx],
-            num_parallel_calls=16,
+            num_parallel_calls=32,
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
