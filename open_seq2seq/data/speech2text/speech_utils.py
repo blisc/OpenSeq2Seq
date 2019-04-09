@@ -221,7 +221,7 @@ def augment_audio_signal(signal, sample_freq, augmentation):
             'noise_level_max': -46,
           }
         'speed_perturbation_ratio' can either be a list of possible speed
-        perturbation factors or a float. If float, a random value from 
+        perturbation factors or a float. If float, a random value from
         U[1-speed_perturbation_ratio, 1+speed_perturbation_ratio].
   Returns:
     np.array: np.array with augmented audio signal.
@@ -287,11 +287,12 @@ def get_speech_features(signal, sample_freq, params):
     if mel_basis is not None and sample_freq != params["sample_freq"]:
       raise ValueError(
           ("The sampling frequency set in params {} does not match the "
-           "frequency {} read from file {}").format(params["sample_freq"],
-                                                    sample_freq, filename)
+           "frequency {} read from file").format(params["sample_freq"],
+                                                 sample_freq)
       )
+    pad_to = params.get('pad_to', 8)
     features, duration = get_speech_features_librosa(
-        signal, sample_freq, num_features, features_type,
+        signal, sample_freq, num_features, features_type, pad_to,
         window_size, window_stride, augmentation, window_fn=window_fn,
         dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
         mel_basis=mel_basis
@@ -303,10 +304,11 @@ def get_speech_features(signal, sample_freq, params):
         window_size, window_stride, augmentation
     )
 
-  return features, duration 
+  return features, duration
 
 
 def get_speech_features_librosa(signal, sample_freq, num_features,
+                                pad_to=8,
                                 features_type='spectrogram',
                                 window_size=20e-3,
                                 window_stride=10e-3,
@@ -379,7 +381,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     features = librosa.feature.mfcc(sr=sample_freq, S=S,
         n_mfcc=num_features, n_mels=2*num_features).T
   elif features_type == 'logfbank':
-    signal = preemphasis(signal,coeff=0.97)
+    signal = preemphasis(signal, coeff=0.97)
     S = np.abs(librosa.core.stft(signal, n_fft=num_fft,
                                  hop_length=int(window_stride * sample_freq),
                                  win_length=int(window_size * sample_freq),
@@ -398,11 +400,11 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
   features = (features - mean) / std_dev
 
   # now it is safe to pad
-  # if pad_to > 0:
-  #   if features.shape[0] % pad_to != 0:
-  #     pad_size = pad_to - features.shape[0] % pad_to
-  #     if pad_size != 0:
-  #         features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
+  if pad_to > 0:
+    if features.shape[0] % pad_to != 0:
+      pad_size = pad_to - features.shape[0] % pad_to
+      if pad_size != 0:
+          features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
   return features, audio_duration
 
 
@@ -498,4 +500,3 @@ def get_speech_features_psf(signal, sample_freq, num_features,
   features = (features - mean) / std_dev
 
   return features, audio_duration
-
