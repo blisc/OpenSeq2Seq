@@ -186,14 +186,14 @@ base_params = {
                 "kernel_size": [29], "stride": [1],
                 "num_channels": 896, "padding": "SAME",
                 "dilation":[2], "dropout_keep_prob": 0.6 * dropout_factor,
-                "residual": residual,
+                "residual": False,
             },
             {
                 "type": "conv1d", "repeat": 1,
                 "kernel_size": [1], "stride": [1],
                 "num_channels": 1024, "padding": "SAME",
                 "dilation":[1], "dropout_keep_prob": 0.6 * dropout_factor,
-                "residual": residual,
+                "residual": False,
             }
         ],
 
@@ -207,6 +207,8 @@ base_params = {
         "activation_fn": activation,
         "data_format": "channels_last",
         "use_conv_mask": True,
+        "drop_block_prob": 0.,
+        "drop_block_index": -1
     },
 
     "decoder": FullyConnectedCTCDecoder,
