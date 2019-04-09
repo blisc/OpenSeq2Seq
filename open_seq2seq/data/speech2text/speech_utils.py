@@ -290,11 +290,11 @@ def get_speech_features(signal, sample_freq, params):
            "frequency {} read from file").format(params["sample_freq"],
                                                  sample_freq)
       )
-    pad_to = params.get('pad_to', 8)
+    # pad_to = params.get('pad_to', 8)
     features, duration = get_speech_features_librosa(
-        signal, sample_freq, num_features, features_type, pad_to,
+        signal, sample_freq, num_features, features_type,
         window_size, window_stride, augmentation, window_fn=window_fn,
-        dither=dither, norm_per_feature=norm_per_feature, num_fft=num_fft,
+        dither=dither, num_fft=num_fft,
         mel_basis=mel_basis
     )
   else:
@@ -308,15 +308,15 @@ def get_speech_features(signal, sample_freq, params):
 
 
 def get_speech_features_librosa(signal, sample_freq, num_features,
-                                pad_to=8,
                                 features_type='spectrogram',
+                                # pad_to=8,
                                 window_size=20e-3,
                                 window_stride=10e-3,
                                 augmentation=None,
                                 window_fn=np.hanning,
                                 num_fft=None,
                                 dither=0.0,
-                                norm_per_feature=False,
+                                # norm_per_feature=False,
                                 mel_basis=None):
   """Function to convert raw audio signal to numpy array of features.
   Backend: librosa
@@ -394,17 +394,17 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
   else:
     raise ValueError('Unknown features type: {}'.format(features_type))
 
-  norm_axis = 0 if norm_per_feature else None
-  mean = np.mean(features, axis=norm_axis)
-  std_dev = np.std(features, axis=norm_axis)
-  features = (features - mean) / std_dev
+  # norm_axis = 0 if norm_per_feature else None
+  # mean = np.mean(features, axis=norm_axis)
+  # std_dev = np.std(features, axis=norm_axis)
+  # features = (features - mean) / std_dev
 
-  # now it is safe to pad
-  if pad_to > 0:
-    if features.shape[0] % pad_to != 0:
-      pad_size = pad_to - features.shape[0] % pad_to
-      if pad_size != 0:
-          features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
+  # # now it is safe to pad
+  # if pad_to > 0:
+  #   if features.shape[0] % pad_to != 0:
+  #     pad_size = pad_to - features.shape[0] % pad_to
+  #     if pad_size != 0:
+  #         features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
   return features, audio_duration
 
 
@@ -495,8 +495,8 @@ def get_speech_features_psf(signal, sample_freq, num_features,
 
   if pad_to > 0:
     assert features.shape[0] % pad_to == 0
-  mean = np.mean(features)
-  std_dev = np.std(features)
-  features = (features - mean) / std_dev
+  # mean = np.mean(features)
+  # std_dev = np.std(features)
+  # features = (features - mean) / std_dev
 
   return features, audio_duration

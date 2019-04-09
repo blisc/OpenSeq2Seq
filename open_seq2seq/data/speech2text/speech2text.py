@@ -199,9 +199,8 @@ class Speech2TextDataLayer(DataLayer):
     return self._iterator
 
   def build_graph(self):
+    """Builds data processing graph using ``tf.data`` API."""
     with tf.device('/cpu:0'):
-
-      """Builds data processing graph using ``tf.data`` API."""
       if self.params['mode'] != 'infer':
         self._dataset = tf.data.Dataset.from_tensor_slices(self._files)
         if self.params['shuffle']:
@@ -294,11 +293,33 @@ class Speech2TextDataLayer(DataLayer):
                    self.params['num_audio_features']])
       x_length = tf.reshape(x_length, [self.params['batch_size']])
 
-      # pad_to = self.params.get("pad_to", 8)
-      # if pad_to > 0 and self.params.get('backend') == 'librosa':
-      #   # we do padding with TF for librosa backend
-      #   num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(x_length), pad_to), pad_to)
-      #   x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
+      # Norm here
+      old_dtype = x.dtype
+      x = tf.cast(x, dtype=tf.float32)
+
+      mask = tf.sequence_mask(
+          lengths=x_length,# maxlen=max_len,
+          dtype=x.dtype
+      )
+      mask = tf.expand_dims(mask, 2)
+      x_masked = x * mask
+      norm_axis = [1] if self.params.get("norm_per_feature", True) else [1, 2]
+      mask_count = tf.reduce_sum(mask, axis=norm_axis, keepdims=True)
+      mean = tf.reduce_sum(x_masked, axis=norm_axis, keepdims=True) / mask_count
+      variance = tf.reduce_sum(tf.square(x - mean) * mask, axis=[1], keepdims=True) / mask_count
+      # print(mean.get_shape())
+      # print(variance.get_shape())
+      x = (x - mean) / tf.sqrt(variance)
+      x = x * mask
+      x = tf.cast(x, dtype=old_dtype)
+
+      num_pad = tf.constant(0)
+      pad_to = self.params.get("pad_to", 8)
+      if pad_to > 0 and self.params.get('backend') == 'librosa':
+        # we do padding with TF for librosa backend
+        num_pad = tf.mod(pad_to - tf.mod(tf.reduce_max(x_length), pad_to), pad_to)
+        x = tf.pad(x, [[0, 0], [0, num_pad], [0, 0]])
+      x_length += num_pad
 
       self._input_tensors = {}
       self._input_tensors["source_tensors"] = [x, x_length]
@@ -422,7 +443,7 @@ class Speech2TextDataLayer(DataLayer):
       sample id.
     """
     source, audio_duration = get_speech_features(
-        wav, 16000., params
+        wav, 16000., self.params
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
         np.int32([len(source)]), np.int32([0]), \
