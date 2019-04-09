@@ -243,6 +243,7 @@ base_params = {
         "sample_freq": 16000,
         "pad_to": 16,
         "dither": 1e-5,
+        "backend": "librosa"
     },
 }
 
