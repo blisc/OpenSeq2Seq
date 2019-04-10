@@ -231,7 +231,7 @@ class Speech2TextDataLayer(DataLayer):
             [x, x_len, y, y_len],
             num_parallel_calls=32,
         )
-        self._dataset = self._dataset.cache()
+        # self._dataset = self._dataset.cache()
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
             padded_shapes=([None, self.params['num_audio_features']],
