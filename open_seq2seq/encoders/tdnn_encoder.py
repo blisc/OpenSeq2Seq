@@ -33,6 +33,7 @@ class TDNNEncoder(Encoder):
         'use_conv_mask': bool,
         'drop_block_prob': float,
         'drop_block_index': int,
+        'bn_in_block': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -142,7 +143,7 @@ class TDNNEncoder(Encoder):
       )
       mask = tf.expand_dims(mask, 2)
 
-    if normalization is None:
+    if normalization is None or not self.params.get("bn_in_block", True):
       conv_block = conv_actv
     elif normalization == "batch_norm":
       conv_block = conv_bn_actv
