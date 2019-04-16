@@ -33,7 +33,7 @@ class TDNNEncoder(Encoder):
         'use_conv_mask': bool,
         'drop_block_prob': float,
         'drop_block_index': int,
-        'bn_in_block': bool,
+        'norm_in_block': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -143,19 +143,22 @@ class TDNNEncoder(Encoder):
       )
       mask = tf.expand_dims(mask, 2)
 
-    if normalization is None or not self.params.get("bn_in_block", True):
+    if normalization is None:
       conv_block = conv_actv
-    elif normalization == "batch_norm":
-      conv_block = conv_bn_actv
+    if normalization == "batch_norm":
       normalization_params['bn_momentum'] = self.params.get(
           'bn_momentum', 0.90)
       normalization_params['bn_epsilon'] = self.params.get('bn_epsilon', 1e-3)
+      conv_block = lambda **kw: conv_bn_actv(**kw, **normalization_params)
     elif normalization == "layer_norm":
       conv_block = conv_ln_actv
     elif normalization == "instance_norm":
       conv_block = conv_in_actv
     else:
       raise ValueError("Incorrect normalization")
+
+    if not self.params.get("norm_in_block", True):
+      conv_block = conv_actv
 
     conv_inputs = source_sequence
     if data_format == 'channels_last':
@@ -250,7 +253,6 @@ class TDNNEncoder(Encoder):
               regularizer=regularizer,
               training=training,
               data_format=data_format,
-              **normalization_params
           )
 
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)
