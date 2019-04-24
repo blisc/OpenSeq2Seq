@@ -427,7 +427,9 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     else:
       time_mask_start = np.random.randint(low=0, high=features.shape[0]-100)
       time_mask_size = np.random.randint(low=0, high=100)
-    mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+    # mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+    mask[:,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+    mask[time_mask_start:time_mask_start+time_mask_size,:] = 0
   return features, audio_duration, mask
 
 
@@ -523,3 +525,28 @@ def get_speech_features_psf(signal, sample_freq, num_features,
   # features = (features - mean) / std_dev
 
   return features, audio_duration
+
+# if __name__ == "__main__":
+#   import matplotlib as mpl
+#   mpl.use('Agg')
+#   import matplotlib.pyplot as plt
+#   _, signal = wave.read("/home/jasoli/Desktop/2902-9008-0000.wav")
+#   features, duration, aug_mask = get_speech_features_librosa(signal, 16000, 64,
+#                                 features_type='logfbank',
+#                                 # pad_to=8,
+#                                 window_size=20e-3,
+#                                 window_stride=10e-3,
+#                                 augmentation=None,
+#                                 window_fn=np.hanning,
+#                                 num_fft=None,
+#                                 dither=1e-5,
+#                                 # norm_per_feature=False,
+#                                 mel_basis=None,
+#                                 aug_mask=True)
+#   # print(features.shape)
+#   # print(aug_mask.shape)
+#   plt.imshow(aug_mask.T)
+#   plt.savefig("/home/jasoli/OpenSeq2Seq/result/mask.png", dpi=300)
+
+#   plt.close()
+#   print(aug_mask)
