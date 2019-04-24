@@ -321,7 +321,7 @@ class Speech2TextDataLayer(DataLayer):
       x = x * mask
       x = tf.cast(x, dtype=old_dtype)
 
-      if self.params.get("aug_mask", False) and self.params['mode'] != 'infer':
+      if self.params.get("aug_mask", False) and self.params['mode'] == 'training':
         x = x * aug_mask
 
       num_pad = tf.constant(0)
