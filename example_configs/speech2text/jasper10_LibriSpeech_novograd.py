@@ -5,7 +5,7 @@ from open_seq2seq.encoders import TDNNEncoder
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
-from open_seq2seq.optimizers.lr_policies import poly_decay
+from open_seq2seq.optimizers.lr_policies import poly_decay, exp_decay
 from open_seq2seq.optimizers.novograd import NovoGrad
 
 normalization = "batch_norm"
@@ -19,6 +19,7 @@ repeat_2 = 4
 dropout_factor = 1.
 training_set = "libri"
 data_aug_enable = False
+lr_policy = poly_decay
 
 if training_set == "libri":
     dataset_files = [
@@ -54,6 +55,24 @@ if data_aug_enable == True:
             'noise_level_min': -90,
             'noise_level_max': -60}
 
+
+if lr_policy is poly_decay:
+    lr_policy_params = {
+        "learning_rate": 0.02,
+        "min_lr": 1e-5,
+        "power": 2.0,
+    }
+else:
+    lr_policy_params = {
+        "learning_rate": 0.02,
+        "decay_steps": 220000,
+        "decay_rate": 0.01,
+        "use_staircase_decay": False,
+        "begin_decay_at": 140000,
+        "min_lr": 0.02/100.,
+        "warmup_steps": 1000,
+    }
+
 base_model = Speech2Text
 
 base_params = {
@@ -81,12 +100,8 @@ base_params = {
         "weight_decay": 0.001,
         "grad_averaging": False,
     },
-    "lr_policy": poly_decay,
-    "lr_policy_params": {
-        "learning_rate": 0.02,
-        "min_lr": 1e-5,
-        "power": 2.0,
-    },
+    "lr_policy": lr_policy,
+    "lr_policy_params": lr_policy_params,
     "larc_params": {
         "larc_eta": 0.001,
     },
