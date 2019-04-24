@@ -421,9 +421,12 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
   if aug_mask:
     freq_mask_start = np.random.randint(low=0, high=num_features-27)
     freq_mask_size = np.random.randint(low=0, high=27)
-    time_mask_max_size = min(100, features.shape[0])
-    time_mask_start = np.random.randint(low=0, high=features.shape[0]-time_mask_max_size)
-    time_mask_size = np.random.randint(low=0, high=time_mask_max_size)
+    if features.shape[0] <= 100:
+      time_mask_start = 0
+      time_mask_size = np.random.randint(low=0, high=features.shape[0])
+    else:
+      time_mask_start = np.random.randint(low=0, high=features.shape[0]-100)
+      time_mask_size = np.random.randint(low=0, high=100)
     mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
   return features, audio_duration, mask
 
