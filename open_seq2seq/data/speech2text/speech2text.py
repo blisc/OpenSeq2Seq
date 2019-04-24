@@ -28,7 +28,8 @@ class Speech2TextDataLayer(DataLayer):
   def get_required_params():
     return dict(DataLayer.get_required_params(), **{
         'num_audio_features': int,
-        'input_type': ['spectrogram', 'mfcc', 'logfbank'],
+        # 'input_type': ['spectrogram', 'mfcc', 'logfbank'],
+        'input_type': ['logfbank'],
         'vocab_file': str,
         'dataset_files': list,
     })
@@ -36,7 +37,8 @@ class Speech2TextDataLayer(DataLayer):
   @staticmethod
   def get_optional_params():
     return dict(DataLayer.get_optional_params(), **{
-        'backend': ['psf', 'librosa'],
+        # 'backend': ['psf', 'librosa'],
+        'backend': ['librosa'],
         'augmentation': dict,
         'pad_to': int,
         'max_duration': float,

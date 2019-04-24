@@ -278,31 +278,31 @@ def get_speech_features(signal, sample_freq, params):
   window_stride = params.get('window_stride', 10e-3)
   augmentation = params.get('augmentation', None)
 
-  if backend == 'librosa':
-    window_fn = WINDOWS_FNS[params.get('window', "hanning")]
-    dither = params.get('dither', 0.0)
-    num_fft = params.get('num_fft', None)
-    norm_per_feature = params.get('norm_per_feature', False)
-    mel_basis = params.get('mel_basis', None)
-    if mel_basis is not None and sample_freq != params["sample_freq"]:
-      raise ValueError(
-          ("The sampling frequency set in params {} does not match the "
-           "frequency {} read from file").format(params["sample_freq"],
-                                                 sample_freq)
-      )
-    # pad_to = params.get('pad_to', 8)
-    features, duration = get_speech_features_librosa(
-        signal, sample_freq, num_features, features_type,
-        window_size, window_stride, augmentation, window_fn=window_fn,
-        dither=dither, num_fft=num_fft,
-        mel_basis=mel_basis
+  # if backend == 'librosa':
+  window_fn = WINDOWS_FNS[params.get('window', "hanning")]
+  dither = params.get('dither', 0.0)
+  num_fft = params.get('num_fft', None)
+  norm_per_feature = params.get('norm_per_feature', False)
+  mel_basis = params.get('mel_basis', None)
+  if mel_basis is not None and sample_freq != params["sample_freq"]:
+    raise ValueError(
+        ("The sampling frequency set in params {} does not match the "
+         "frequency {} read from file").format(params["sample_freq"],
+                                               sample_freq)
     )
-  else:
-    pad_to = params.get('pad_to', 8)
-    features, duration = get_speech_features_psf(
-        signal, sample_freq, num_features, pad_to, features_type,
-        window_size, window_stride, augmentation
-    )
+  # pad_to = params.get('pad_to', 8)
+  features, duration = get_speech_features_librosa(
+      signal, sample_freq, num_features, features_type,
+      window_size, window_stride, augmentation, window_fn=window_fn,
+      dither=dither, num_fft=num_fft,
+      mel_basis=mel_basis
+  )
+  # else:
+  #   pad_to = params.get('pad_to', 8)
+  #   features, duration = get_speech_features_psf(
+  #       signal, sample_freq, num_features, pad_to, features_type,
+  #       window_size, window_stride, augmentation
+  #   )
 
   return features, duration
 
@@ -351,48 +351,59 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
   if dither > 0:
     signal += dither*np.random.randn(*signal.shape)
 
-  if features_type == 'spectrogram':
-    # ignore 1/n_fft multiplier, since there is a post-normalization
-    powspec = np.square(np.abs(librosa.core.stft(
-        signal, n_fft=n_window_size,
-        hop_length=n_window_stride, win_length=n_window_size, center=True,
-        window=window_fn)))
-    # remove small bins
-    powspec[powspec <= 1e-30] = 1e-30
-    features = 10 * np.log10(powspec.T)
+  signal = preemphasis(signal, coeff=0.97)
+  S = np.abs(librosa.core.stft(signal, n_fft=num_fft,
+                               hop_length=int(window_stride * sample_freq),
+                               win_length=int(window_size * sample_freq),
+                               center=True, window=window_fn))**2.0
+  if mel_basis is None:
+    # Build a Mel filter
+    mel_basis = librosa.filters.mel(sample_freq, num_fft, n_mels=num_features,
+                                    fmin=0, fmax=int(sample_freq/2))
+  features = np.log(np.dot(mel_basis, S) + 1e-20).T
 
-    assert num_features <= n_window_size // 2 + 1, \
-      "num_features for spectrogram should be <= (sample_freq * window_size // 2 + 1)"
+  # if features_type == 'spectrogram':
+  #   # ignore 1/n_fft multiplier, since there is a post-normalization
+  #   powspec = np.square(np.abs(librosa.core.stft(
+  #       signal, n_fft=n_window_size,
+  #       hop_length=n_window_stride, win_length=n_window_size, center=True,
+  #       window=window_fn)))
+  #   # remove small bins
+  #   powspec[powspec <= 1e-30] = 1e-30
+  #   features = 10 * np.log10(powspec.T)
 
-    # cut high frequency part
-    features = features[:, :num_features]
+  #   assert num_features <= n_window_size // 2 + 1, \
+  #     "num_features for spectrogram should be <= (sample_freq * window_size // 2 + 1)"
 
-  elif features_type == 'mfcc':
-    signal = preemphasis(signal, coeff=0.97)
-    S = np.square(
-            np.abs(
-                librosa.core.stft(signal, n_fft=num_fft,
-                                  hop_length=int(window_stride * sample_freq),
-                                  win_length=int(window_size * sample_freq),
-                                  center=True, window=window_fn
-                )
-            )
-        )
-    features = librosa.feature.mfcc(sr=sample_freq, S=S,
-        n_mfcc=num_features, n_mels=2*num_features).T
-  elif features_type == 'logfbank':
-    signal = preemphasis(signal, coeff=0.97)
-    S = np.abs(librosa.core.stft(signal, n_fft=num_fft,
-                                 hop_length=int(window_stride * sample_freq),
-                                 win_length=int(window_size * sample_freq),
-                                 center=True, window=window_fn))**2.0
-    if mel_basis is None:
-      # Build a Mel filter
-      mel_basis = librosa.filters.mel(sample_freq, num_fft, n_mels=num_features,
-                                      fmin=0, fmax=int(sample_freq/2))
-    features = np.log(np.dot(mel_basis, S) + 1e-20).T
-  else:
-    raise ValueError('Unknown features type: {}'.format(features_type))
+  #   # cut high frequency part
+  #   features = features[:, :num_features]
+
+  # elif features_type == 'mfcc':
+  #   signal = preemphasis(signal, coeff=0.97)
+  #   S = np.square(
+  #           np.abs(
+  #               librosa.core.stft(signal, n_fft=num_fft,
+  #                                 hop_length=int(window_stride * sample_freq),
+  #                                 win_length=int(window_size * sample_freq),
+  #                                 center=True, window=window_fn
+  #               )
+  #           )
+  #       )
+  #   features = librosa.feature.mfcc(sr=sample_freq, S=S,
+  #       n_mfcc=num_features, n_mels=2*num_features).T
+  # elif features_type == 'logfbank':
+  #   signal = preemphasis(signal, coeff=0.97)
+  #   S = np.abs(librosa.core.stft(signal, n_fft=num_fft,
+  #                                hop_length=int(window_stride * sample_freq),
+  #                                win_length=int(window_size * sample_freq),
+  #                                center=True, window=window_fn))**2.0
+  #   if mel_basis is None:
+  #     # Build a Mel filter
+  #     mel_basis = librosa.filters.mel(sample_freq, num_fft, n_mels=num_features,
+  #                                     fmin=0, fmax=int(sample_freq/2))
+  #   features = np.log(np.dot(mel_basis, S) + 1e-20).T
+  # else:
+  #   raise ValueError('Unknown features type: {}'.format(features_type))
 
   # norm_axis = 0 if norm_per_feature else None
   # mean = np.mean(features, axis=norm_axis)
