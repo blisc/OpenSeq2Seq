@@ -186,17 +186,17 @@ def get_speech_features_from_file(filename, params):
 
   except PreprocessOnTheFlyException:
     sample_freq, signal = wave.read(filename)
-    features, duration = get_speech_features(signal, sample_freq, params)
+    features, duration, aug_mask = get_speech_features(signal, sample_freq, params)
 
   except (OSError, FileNotFoundError, RegenerateCacheException):
     sample_freq, signal = wave.read(filename)
-    features, duration = get_speech_features(signal, sample_freq, params)
+    features, duration, aug_mask = get_speech_features(signal, sample_freq, params)
 
     preprocessed_data_path = get_preprocessed_data_path(filename, params)
     save_features(features, duration, preprocessed_data_path,
                   data_format=cache_format)
 
-  return features, duration
+  return features, duration, aug_mask
 
 
 def normalize_signal(signal):
@@ -291,11 +291,11 @@ def get_speech_features(signal, sample_freq, params):
                                                sample_freq)
     )
   # pad_to = params.get('pad_to', 8)
-  features, duration = get_speech_features_librosa(
+  features, duration, aug_mask = get_speech_features_librosa(
       signal, sample_freq, num_features, features_type,
       window_size, window_stride, augmentation, window_fn=window_fn,
       dither=dither, num_fft=num_fft,
-      mel_basis=mel_basis
+      mel_basis=mel_basis, aug_mask=params.get("aug_mask", False)
   )
   # else:
   #   pad_to = params.get('pad_to', 8)
@@ -304,7 +304,7 @@ def get_speech_features(signal, sample_freq, params):
   #       window_size, window_stride, augmentation
   #   )
 
-  return features, duration
+  return features, duration, aug_mask
 
 
 def get_speech_features_librosa(signal, sample_freq, num_features,
@@ -317,7 +317,8 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
                                 num_fft=None,
                                 dither=0.0,
                                 # norm_per_feature=False,
-                                mel_basis=None):
+                                mel_basis=None,
+                                aug_mask=False):
   """Function to convert raw audio signal to numpy array of features.
   Backend: librosa
   Args:
@@ -416,7 +417,15 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
   #     pad_size = pad_to - features.shape[0] % pad_to
   #     if pad_size != 0:
   #         features = np.pad(features, ((0,pad_size), (0,0)), mode='constant')
-  return features, audio_duration
+  mask = np.ones(features.shape)
+  if aug_mask:
+    freq_mask_start = np.random.randint(low=0, high=num_features-27)
+    freq_mask_size = np.random.randint(low=0, high=27)
+    time_mask_max_size = min(100, features.shape[0])
+    time_mask_start = np.random.randint(low=0, high=features.shape[0]-time_mask_max_size)
+    time_mask_size = np.random.randint(low=0, high=time_mask_max_size)
+    mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+  return features, audio_duration, mask
 
 
 def get_speech_features_psf(signal, sample_freq, num_features,

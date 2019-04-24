@@ -55,6 +55,7 @@ class Speech2TextDataLayer(DataLayer):
         'num_fft': int,
         'precompute_mel_basis': bool,
         'sample_freq': int,
+        'aug_mask': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):
@@ -213,33 +214,35 @@ class Speech2TextDataLayer(DataLayer):
             lambda line: tf.py_func(
                 self._parse_audio_transcript_element,
                 [line],
-                [self.params['dtype'], tf.int32, tf.int32, tf.int32, tf.float32],
+                [self.params['dtype'], tf.int32, tf.int32, tf.int32, tf.float32, self.params['dtype']],
                 stateful=False,
             ),
-            num_parallel_calls=32,
+            num_parallel_calls=16,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
-              lambda x, x_len, y, y_len, duration:
+              lambda x, x_len, y, y_len, duration, aug_mask:
               tf.less_equal(duration, self.params['max_duration'])
           )
         if self.params['min_duration'] > 0:
           self._dataset = self._dataset.filter(
-              lambda x, x_len, y, y_len, duration:
+              lambda x, x_len, y, y_len, duration, aug_mask:
               tf.greater_equal(duration, self.params['min_duration'])
           )
         self._dataset = self._dataset.map(
-            lambda x, x_len, y, y_len, duration:
-            [x, x_len, y, y_len],
-            num_parallel_calls=32,
+            lambda x, x_len, y, y_len, duration, aug_mask:
+            [x, x_len, y, y_len, aug_mask],
+            num_parallel_calls=16,
         )
         # self._dataset = self._dataset.cache()
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
             padded_shapes=([None, self.params['num_audio_features']],
-                           1, [None], 1),
-            padding_values=(
-                tf.cast(0, self.params['dtype']), 0, self.target_pad_value, 0),
+                           1, [None], 1,
+                           [None, self.params['num_audio_features']]),
+            padding_values=(tf.cast(0, self.params['dtype']),
+                            0, self.target_pad_value, 0,
+                            tf.cast(0, self.params['dtype'])),
         )
       else:
         indices = self.split_data(
@@ -257,7 +260,7 @@ class Speech2TextDataLayer(DataLayer):
                 [self.params['dtype'], tf.int32, tf.int32, tf.float32],
                 stateful=False,
             ),
-            num_parallel_calls=32,
+            num_parallel_calls=16,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
@@ -272,7 +275,7 @@ class Speech2TextDataLayer(DataLayer):
         self._dataset = self._dataset.map(
             lambda x, x_len, idx, duration:
             [x, x_len, idx],
-            num_parallel_calls=32,
+            num_parallel_calls=16,
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
@@ -283,11 +286,13 @@ class Speech2TextDataLayer(DataLayer):
                            .make_initializable_iterator()
 
       if self.params['mode'] != 'infer':
-        x, x_length, y, y_length = self._iterator.get_next()
+        x, x_length, y, y_length, aug_mask = self._iterator.get_next()
         # need to explicitly set batch size dimension
         # (it is employed in the model)
         y.set_shape([self.params['batch_size'], None])
         y_length = tf.reshape(y_length, [self.params['batch_size']])
+        aug_mask.set_shape([self.params['batch_size'], None,
+                            self.params['num_audio_features']])
       else:
         x, x_length, x_id = self._iterator.get_next()
         x_id = tf.reshape(x_id, [self.params['batch_size']])
@@ -315,6 +320,9 @@ class Speech2TextDataLayer(DataLayer):
       x = (x - mean) / tf.sqrt(variance)
       x = x * mask
       x = tf.cast(x, dtype=old_dtype)
+
+      if self.params.get("aug_mask", False) and self.params['mode'] != 'infer':
+        x = x * aug_mask
 
       num_pad = tf.constant(0)
       pad_to = self.params.get("pad_to", 8)
@@ -426,7 +434,7 @@ class Speech2TextDataLayer(DataLayer):
     if self.params.get("syn_enable", False):
       audio_filename = audio_filename.format(np.random.choice(self.params["syn_subdirs"]))
 
-    source, audio_duration = get_speech_features_from_file(
+    source, audio_duration, aug_mask = get_speech_features_from_file(
         audio_filename,
         params=self.params
     )
@@ -434,7 +442,8 @@ class Speech2TextDataLayer(DataLayer):
         np.int32([len(source)]), \
         np.int32(target), \
         np.int32([len(target)]), \
-        np.float32([audio_duration])
+        np.float32([audio_duration]), \
+        aug_mask.astype(self.params['dtype'].as_numpy_dtype())
 
   def _get_audio(self, wav):
     """Parses audio from wav and returns array of audio features.
@@ -445,7 +454,7 @@ class Speech2TextDataLayer(DataLayer):
       tuple: source audio features as ``np.array``, length of source sequence,
       sample id.
     """
-    source, audio_duration = get_speech_features(
+    source, audio_duration, _ = get_speech_features(
         wav, 16000., self.params
     )
     return source.astype(self.params['dtype'].as_numpy_dtype()), \
@@ -462,7 +471,7 @@ class Speech2TextDataLayer(DataLayer):
       sample id.
     """
     idx, audio_filename = id_and_audio_filename
-    source, audio_duration = get_speech_features_from_file(
+    source, audio_duration, _ = get_speech_features_from_file(
         audio_filename,
         params=self.params
     )
