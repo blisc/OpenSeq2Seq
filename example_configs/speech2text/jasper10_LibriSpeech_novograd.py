@@ -260,7 +260,6 @@ base_params = {
         "pad_to": 16,
         "dither": 1e-5,
         "backend": "librosa",
-        "aug_mask": False
     },
 }
 
@@ -271,6 +270,7 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
+        "aug_mask": False
     },
 }
 

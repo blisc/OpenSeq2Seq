@@ -430,6 +430,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     # mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
     mask[:,freq_mask_start:freq_mask_start+freq_mask_size] = 0
     mask[time_mask_start:time_mask_start+time_mask_size,:] = 0
+  # mask = np.zeros(features.shape)
   return features, audio_duration, mask
 
 
