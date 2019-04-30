@@ -217,7 +217,7 @@ class Speech2TextDataLayer(DataLayer):
                 [self.params['dtype'], tf.int32, tf.int32, tf.int32, tf.float32, self.params['dtype']],
                 stateful=False,
             ),
-            num_parallel_calls=16,
+            num_parallel_calls=8,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
@@ -232,7 +232,7 @@ class Speech2TextDataLayer(DataLayer):
         self._dataset = self._dataset.map(
             lambda x, x_len, y, y_len, duration, aug_mask:
             [x, x_len, y, y_len, aug_mask],
-            num_parallel_calls=16,
+            num_parallel_calls=8,
         )
         # self._dataset = self._dataset.cache()
         self._dataset = self._dataset.padded_batch(
@@ -260,7 +260,7 @@ class Speech2TextDataLayer(DataLayer):
                 [self.params['dtype'], tf.int32, tf.int32, tf.float32],
                 stateful=False,
             ),
-            num_parallel_calls=16,
+            num_parallel_calls=8,
         )
         if self.params['max_duration'] > 0:
           self._dataset = self._dataset.filter(
@@ -275,7 +275,7 @@ class Speech2TextDataLayer(DataLayer):
         self._dataset = self._dataset.map(
             lambda x, x_len, idx, duration:
             [x, x_len, idx],
-            num_parallel_calls=16,
+            num_parallel_calls=8,
         )
         self._dataset = self._dataset.padded_batch(
             self.params['batch_size'],
