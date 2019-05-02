@@ -228,10 +228,8 @@ base_params = {
         "precompute_mel_basis": True,
         "sample_freq": 16000,
         "pad_to": 16,
-        "delta": False,
-        "delta_delta": False,
-        "cache_features": False,
-        "cache_save_dir": "/mnt/librispeech-cache",
+        "dither": 1e-5,
+        "backend": "librosa",
     },
 }
 
@@ -242,7 +240,6 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "dither": 1e-5,
     },
 }
 
