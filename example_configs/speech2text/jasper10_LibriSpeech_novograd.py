@@ -102,9 +102,7 @@ base_params = {
     },
     "lr_policy": lr_policy,
     "lr_policy_params": lr_policy_params,
-    "larc_params": {
-        "larc_eta": 0.001,
-    },
+    "larc_params": { "larc_eta": 0.001, },
 
     # "regularizer": tf.contrib.layers.l2_regularizer,
     # "regularizer_params": {
