@@ -268,7 +268,8 @@ train_params = {
         "dataset_files": dataset_files,
         "max_duration": 16.7,
         "shuffle": True,
-        "aug_mask": False
+        "aug_mask": False,
+        "cutout": False
     },
 }
 

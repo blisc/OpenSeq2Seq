@@ -56,6 +56,7 @@ class Speech2TextDataLayer(DataLayer):
         'precompute_mel_basis': bool,
         'sample_freq': int,
         'aug_mask': bool,
+        'cutout': bool,
     })
 
   def __init__(self, params, model, num_workers, worker_id):

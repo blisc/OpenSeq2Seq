@@ -295,7 +295,8 @@ def get_speech_features(signal, sample_freq, params):
       signal, sample_freq, num_features, features_type,
       window_size, window_stride, augmentation, window_fn=window_fn,
       dither=dither, num_fft=num_fft,
-      mel_basis=mel_basis, aug_mask=params.get("aug_mask", False)
+      mel_basis=mel_basis, aug_mask=params.get("aug_mask", False),
+      cutout=params.get("cutout", False)
   )
   # else:
   #   pad_to = params.get('pad_to', 8)
@@ -318,7 +319,8 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
                                 dither=0.0,
                                 # norm_per_feature=False,
                                 mel_basis=None,
-                                aug_mask=False):
+                                aug_mask=False,
+                                cutout=False):
   """Function to convert raw audio signal to numpy array of features.
   Backend: librosa
   Args:
@@ -427,9 +429,11 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     else:
       time_mask_start = np.random.randint(low=0, high=features.shape[0]-100)
       time_mask_size = np.random.randint(low=0, high=100)
-    # mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
-    mask[:,freq_mask_start:freq_mask_start+freq_mask_size] = 0
-    mask[time_mask_start:time_mask_start+time_mask_size,:] = 0
+    if cutout:
+      mask[time_mask_start:time_mask_start+time_mask_size,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+    else:
+      mask[:,freq_mask_start:freq_mask_start+freq_mask_size] = 0
+      mask[time_mask_start:time_mask_start+time_mask_size,:] = 0
   # mask = np.zeros(features.shape)
   return features, audio_duration, mask
 
