@@ -342,7 +342,7 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     audio_duration (float): duration of the signal in seconds
   """
   if trim:
-    signal = librosa.effects.trim(signal.astype(np.float32), 30)
+    signal, _ = librosa.effects.trim(signal.astype(np.float32), 30)
 
   if augmentation:
     signal = augment_audio_signal(signal.astype(np.float32), sample_freq, augmentation)
