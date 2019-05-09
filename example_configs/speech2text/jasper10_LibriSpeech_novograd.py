@@ -271,7 +271,8 @@ train_params = {
         "max_duration": 16.7,
         "shuffle": True,
         "aug_mask": False,
-        "cutout": False
+        "cutout": False,
+        "trim": False,
     },
 }
 

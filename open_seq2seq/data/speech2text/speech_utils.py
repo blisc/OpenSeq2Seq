@@ -296,7 +296,7 @@ def get_speech_features(signal, sample_freq, params):
       window_size, window_stride, augmentation, window_fn=window_fn,
       dither=dither, num_fft=num_fft,
       mel_basis=mel_basis, aug_mask=params.get("aug_mask", False),
-      cutout=params.get("cutout", False)
+      cutout=params.get("cutout", False), trim=params.get("trim", False)
   )
   # else:
   #   pad_to = params.get('pad_to', 8)
@@ -320,7 +320,8 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
                                 # norm_per_feature=False,
                                 mel_basis=None,
                                 aug_mask=False,
-                                cutout=False):
+                                cutout=False,
+                                trim=False):
   """Function to convert raw audio signal to numpy array of features.
   Backend: librosa
   Args:
@@ -340,6 +341,9 @@ def get_speech_features_librosa(signal, sample_freq, num_features,
     num_features].
     audio_duration (float): duration of the signal in seconds
   """
+  if trim:
+    signal = librosa.effects.trim(signal, 30)
+
   if augmentation:
     signal = augment_audio_signal(signal.astype(np.float32), sample_freq, augmentation)
   else:
