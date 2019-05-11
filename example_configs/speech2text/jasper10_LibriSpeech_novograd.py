@@ -49,6 +49,12 @@ elif training_set == "combined_33_66":
             "/data/speech/LibriSpeech/LibriSpeech/data_syn.txt"]
 elif training_set == "commonvoice":
     dataset_files = ["/CommonVoiceCSV/validated.csv"]
+elif training_set == "ls_and_cv":
+    dataset_files = [
+            "/data/librispeech/librivox-train-clean-100.csv",
+            "/data/librispeech/librivox-train-clean-360.csv",
+            "/data/librispeech/librivox-train-other-500.csv",
+            "/CommonVoiceCSV/validated.csv"]
 
 data_aug = {}
 if data_aug_enable == True:
