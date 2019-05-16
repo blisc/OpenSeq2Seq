@@ -141,6 +141,47 @@ def poly_decay(global_step, learning_rate, decay_steps, power=1.0,
   )
   return lr
 
+def nemo_poly_decay(global_step, learning_rate, decay_steps, power=1.0,
+               begin_decay_at=0, min_lr=0.0, warmup_steps=0):
+  """Polynomial decay learning rate policy.
+  This function is equivalent to ``tensorflow.train.polynomial_decay`` with
+  some additional functionality. Namely, it adds ``begin_decay_at`` parameter
+  which is the first step to start decaying learning rate.
+
+  Args:
+    global_step: global step TensorFlow tensor.
+    learning_rate (float): initial learning rate to use.
+    decay_steps (int): number of steps to apply decay for.
+    power (float): power for polynomial decay.
+    begin_decay_at (int): the first step to start decaying learning rate.
+    min_lr (float): minimal value of the learning rate
+        (same as ``end_learning_rate`` TensorFlow parameter).
+
+  Returns:
+    learning rate at step ``global_step``.
+  """
+  begin_decay_at = max(warmup_steps, begin_decay_at)
+  if warmup_steps > 0:
+    learning_rate = tf.cond(
+        global_step < warmup_steps,
+        lambda: (learning_rate * tf.cast(global_step, tf.float32) /
+                 tf.cast(warmup_steps, tf.float32)),
+        lambda: learning_rate,
+    )
+  lr = tf.cond(
+      global_step < begin_decay_at,
+      lambda: learning_rate,
+      lambda: tf.train.polynomial_decay(
+          learning_rate,
+          global_step=global_step-begin_decay_at+1,
+          decay_steps=decay_steps,
+          end_learning_rate=0,
+          power=power),
+      name="learning_rate"
+  )
+  lr = tf.max(lr, min_lr)
+  return lr
+
 
 def transformer_policy(global_step, learning_rate, d_model, warmup_steps,
                        max_lr=None, coefficient=1.0, dtype=tf.float32):

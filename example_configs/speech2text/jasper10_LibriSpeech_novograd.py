@@ -5,7 +5,7 @@ from open_seq2seq.encoders import TDNNEncoder
 from open_seq2seq.decoders import FullyConnectedCTCDecoder
 from open_seq2seq.data.speech2text.speech2text import Speech2TextDataLayer
 from open_seq2seq.losses import CTCLoss
-from open_seq2seq.optimizers.lr_policies import poly_decay, exp_decay
+from open_seq2seq.optimizers.lr_policies import poly_decay, exp_decay, nemo_poly_decay
 from open_seq2seq.optimizers.novograd import NovoGrad
 
 normalization = "batch_norm"
@@ -19,7 +19,7 @@ repeat_2 = 4
 dropout_factor = 1.
 training_set = "libri"
 data_aug_enable = False
-lr_policy = poly_decay
+lr_policy = nemo_poly_decay
 
 if training_set == "libri":
     dataset_files = [
@@ -58,7 +58,7 @@ if data_aug_enable == True:
             'noise_level_max': -60}
 
 
-if lr_policy is poly_decay:
+if lr_policy is poly_decay or lr_policy is nemo_poly_decay:
     lr_policy_params = {
         "learning_rate": 0.02,
         "min_lr": 1e-5,
