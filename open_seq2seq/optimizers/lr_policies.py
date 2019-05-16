@@ -179,7 +179,7 @@ def nemo_poly_decay(global_step, learning_rate, decay_steps, power=1.0,
           power=power),
       name="learning_rate"
   )
-  lr = tf.max(lr, min_lr)
+  lr = tf.maximum(lr, min_lr)
   return lr
 
 
