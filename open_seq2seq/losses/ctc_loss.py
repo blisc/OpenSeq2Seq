@@ -92,13 +92,13 @@ class CTCLoss(Loss):
         src_length,
         ignore_longer_outputs_than_inputs=True)
 
-    @tf.RegisterGradient("MyCTCLoss")
-    def _my_ctc_loss_grad(op, loss, grad):
-      return grad, tf.zeros(labels.indices.shape), tf.zeros(labels.values.shape), tf.zeros(src_length.shape)
+    # @tf.RegisterGradient("MyCTCLoss")
+    # def _my_ctc_loss_grad(op, loss, grad):
+      # return grad, tf.zeros(labels.indices.shape), tf.zeros(labels.values.shape), tf.zeros(src_length.shape)
 
     if self._mask_nan:
       total_loss = mask_nans(total_loss)
 
     # Calculate the average loss across the batch
     avg_loss = tf.reduce_mean(total_loss)
-    return avg_loss
+    return avg_loss, grads

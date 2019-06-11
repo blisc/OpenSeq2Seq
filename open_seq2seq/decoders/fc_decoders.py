@@ -152,7 +152,7 @@ class FullyConnectedTimeDecoder(Decoder):
       outputs = self.params['logits_to_outputs_func'](logits, input_dict)
 
       return {
-          'outputs': [outputs, logits],
+          'outputs': [outputs, logits, probs],
           'logits': logits,
           'probs': probs,
           'src_length': input_dict['encoder_output']['src_length'],

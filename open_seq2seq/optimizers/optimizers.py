@@ -117,7 +117,8 @@ def optimize_loss(loss,
                   on_horovod=False,
                   iter_size=1,
                   skip_update_ph=None,
-                  model=None):
+                  model=None,
+                  model_output=None):
   """Given loss and parameters for optimizer, returns a training op.
 
   Args:
@@ -199,10 +200,14 @@ def optimize_loss(loss,
     if dtype == 'mixed':
       opt = MixedPrecisionOptimizerWrapper(opt, loss_scale=loss_scaling)
 
+    grad_loss = None
+    if model_output is not None:
+      loss = model_output[2]
+      grad_loss = model_output[3]
     # Compute gradients.
     grads_and_vars = opt.compute_gradients(
-        loss, colocate_gradients_with_ops=True, var_list=var_list
-    )
+        loss, colocate_gradients_with_ops=True, var_list=var_list, grad_loss=grad_loss
+    )    
 
     if on_horovod:
       if iter_size > 1:
