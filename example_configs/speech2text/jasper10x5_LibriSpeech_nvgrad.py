@@ -26,7 +26,7 @@ base_params = {
     "print_samples_steps": 2200,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
-    "logdir": "jasper_log_folder",
+    "logdir": "/mnt/hdd/experiment_results/cloud/asr/5_5_LibriSpeech/400e/415780-jasper10x5-dr-librosa-sp-novo-400e/checkpoint",
     "num_checkpoints": 2,
 
     "optimizer": NovoGrad,
@@ -173,7 +173,7 @@ base_params = {
         # "trie_path": "language_model/trie.binary",
         # "alphabet_config_path": "open_seq2seq/test_utils/toy_speech_data/vocab.txt",
 
-        "infer_logits_to_pickle": True,
+        "infer_logits_to_pickle": False,
     },
     "loss": CTCLoss,
     "loss_params": {},
@@ -223,7 +223,7 @@ infer_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "dataset_files": [
-            "/data/librispeech/librivox-test-clean.csv",
+            "/mnt/hdd/data/Librispeech/librispeech/librivox-dev-clean-2.csv",
         ],
         "shuffle": False,
     },

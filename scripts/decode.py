@@ -190,6 +190,18 @@ def evaluate_wer(logits, labels, vocab, decoder):
   return wer, wer_per_sample
 
 
+def write_predictions(logits, labels, vocab, decoder, file):
+  with open(file, "w") as f:
+    f.write("pred, real, wer\n")
+    for idx, line in enumerate(labels):
+      audio_filename = line[0]
+      label = line[-1]
+      pred = decoder(logits[audio_filename], vocab)
+      dist = levenshtein(label.lower().split(), pred.lower().split())
+      wer = dist / len(label.split())
+      f.write("{}, {}, {}\n".format(pred, label, wer))
+
+
 data = load_dump(args.logits)
 labels = load_labels(args.labels)
 logits = get_logits(data, labels)
@@ -200,6 +212,9 @@ probs_batch = []
 for line in labels:
   audio_filename = line[0]
   probs_batch.append(softmax(logits[audio_filename]))
+
+if args.mode == 'pred':
+  write_predictions(logits, labels, vocab, greedy_decoder, args.dump_all_beams_to)
 
 if args.mode == 'eval':
   wer, _ = evaluate_wer(logits, labels, vocab, greedy_decoder)

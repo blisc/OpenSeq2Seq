@@ -12,7 +12,7 @@ from open_seq2seq.optimizers.lr_policies import fixed_lr, transformer_policy, ex
 base_model = Text2Speech
 
 dataset = "MAILABS"
-dataset_location = DL_REPLACE
+dataset_location = "/mnt/ssd1/data/MAILABS"
 output_type = "both"
 
 if dataset == "MAILABS":
@@ -64,7 +64,7 @@ base_params = {
   "eval_steps": 500,
   "save_checkpoint_steps": 2500,
   "save_to_tensorboard": True,
-  "logdir": "result/tacotron-gst-8gpu",
+  "logdir": "/mnt/ssd1/old_experiment_results/cloud/tacotron/230060-tacotron-gst-MAILABS/tacotron/logs",
   "max_grad_norm":1.,
 
   "optimizer": "Adam",

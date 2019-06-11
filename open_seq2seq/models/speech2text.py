@@ -71,6 +71,20 @@ def levenshtein(a, b):
   return current[n]
 
 
+def plot_probs(probs, step, logdir):
+  fig, ax = plt.subplots(nrows=1, figsize=(8, 3))
+  probs = probs.astype(float)
+  colour = ax.imshow(
+      probs.T, cmap='viridis', interpolation=None, aspect='auto'
+  )
+  fig.colorbar(colour, ax=ax)
+  plt.tight_layout()
+  name = '{}/Output_step{}.png'.format(logdir, step)
+  fig.savefig(name, dpi=300)
+
+  plt.close(fig)
+
+
 def plot_attention(alignments, pred_text, encoder_len, training_step):
 
   alignments = alignments[:len(pred_text), :encoder_len]
@@ -197,7 +211,7 @@ class Speech2Text(EncoderDecoderModel):
 
   def maybe_print_logs(self, input_values, output_values, training_step):
     y, len_y = input_values['target_tensors']
-    decoded_sequence = output_values
+    decoded_sequence = output_values[0]
     y_one_sample = y[0]
     len_y_one_sample = len_y[0]
     decoded_sequence_one_batch = decoded_sequence[0]
@@ -226,6 +240,8 @@ class Speech2Text(EncoderDecoderModel):
     if self.plot_attention:
       attention_summary = plot_attention(
           output_values[1][0], pred_text, output_values[2][0], training_step)
+    plot_probs(output_values[1][:,0,:], training_step, self.params["logdir"])
+
 
     deco_print("Sample WER: {:.4f}".format(sample_wer), offset=4)
     deco_print("Sample target:     " + true_text, offset=4)

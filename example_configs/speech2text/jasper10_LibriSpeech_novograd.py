@@ -13,9 +13,9 @@ activation = tf.nn.relu
 # gate_activation = None
 
 residual = True
-residual_dense = True
-repeat_1 = 4
-repeat_2 = 4
+residual_dense = False
+repeat_1 = 3
+repeat_2 = 3
 dropout_factor = 1.
 training_set = "libri"
 data_aug_enable = False
@@ -86,9 +86,9 @@ base_params = {
     "batch_size_per_gpu": 32,
     "iter_size": 1,
 
-    "save_summaries_steps": 100,
-    "print_loss_steps": 10,
-    "print_samples_steps": 2200,
+    "save_summaries_steps": 200,
+    "print_loss_steps": 25,
+    "print_samples_steps": 500,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
     "logdir": "nsr_log_folder",

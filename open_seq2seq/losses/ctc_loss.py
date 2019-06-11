@@ -72,14 +72,29 @@ class CTCLoss(Loss):
     # this loss needs an access to src_length since they
     # might get changed in the encoder
     src_length = input_dict['decoder_output']['src_length']
+    probs = input_dict['decoder_output']['probs']
 
     # Compute the CTC loss
-    total_loss = tf.nn.ctc_loss(
-        labels=dense_to_sparse(tgt_sequence, tgt_length),
-        inputs=logits,
-        sequence_length=src_length,
-        ignore_longer_outputs_than_inputs=True,
-    )
+    # total_loss = tf.nn.ctc_loss(
+    #     labels=dense_to_sparse(tgt_sequence, tgt_length),
+    #     inputs=probs,
+    #     sequence_length=src_length,
+    #     ignore_longer_outputs_than_inputs=True,
+    # )
+
+    my_ctc_loss = tf.load_op_library("/home/jasoli/tensorflow/bazel-bin/tensorflow/core/user_ops/my_ctc_loss.so")
+
+    labels = dense_to_sparse(tgt_sequence, tgt_length)
+    total_loss, grads = my_ctc_loss.my_ctc_loss(
+        probs,
+        labels.indices,
+        labels.values,
+        src_length,
+        ignore_longer_outputs_than_inputs=True)
+
+    @tf.RegisterGradient("MyCTCLoss")
+    def _my_ctc_loss_grad(op, loss, grad):
+      return grad, tf.zeros(labels.indices.shape), tf.zeros(labels.values.shape), tf.zeros(src_length.shape)
 
     if self._mask_nan:
       total_loss = mask_nans(total_loss)
