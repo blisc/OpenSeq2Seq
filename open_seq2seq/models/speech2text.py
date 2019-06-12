@@ -275,7 +275,7 @@ class Speech2Text(EncoderDecoderModel):
     total_word_lev = 0.0
     total_word_count = 0.0
 
-    decoded_sequence = output_values[0]
+    decoded_sequence = output_values[0][0]
 
     if self.is_bpe:
       decoded_texts = sparse_tensor_to_chars_bpe(decoded_sequence)

@@ -463,7 +463,7 @@ class Model:
           self.loss = loss
         if self._mode == "eval":
           self.eval_losses = [loss]
-        model_output = self.output
+        model_output = self._output
 
     try:
       self._num_objects_per_step = [self._get_num_objects_per_step(worker_id)

@@ -86,9 +86,9 @@ base_params = {
     "batch_size_per_gpu": 32,
     "iter_size": 1,
 
-    "save_summaries_steps": 200,
-    "print_loss_steps": 25,
-    "print_samples_steps": 500,
+    "save_summaries_steps": 550,
+    "print_loss_steps": 10,
+    "print_samples_steps": 1100,
     "eval_steps": 2200,
     "save_checkpoint_steps": 1100,
     "logdir": "nsr_log_folder",
