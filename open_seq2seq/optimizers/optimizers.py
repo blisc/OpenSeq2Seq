@@ -202,7 +202,7 @@ def optimize_loss(loss,
 
     grad_loss = None
     model_output = model.get_output_tensors()
-    if model_output[-1] is not None:
+    if len(model_output) == 4:
       loss = model_output[2] # log_softmax output
       grad_loss = model_output[3]
       print("Computing gradients with grad_loss")
