@@ -314,13 +314,14 @@ class Speech2Text(EncoderDecoderModel):
 
   def infer(self, input_values, output_values):
     preds = []
-    decoded_sequence = output_values[0][0]
 
     if self.dump_outputs:
       # decoded_sequence has 'time_major' shape: [T, B, C]
+      decoded_sequence = output_values[0]
       for i in range(decoded_sequence.shape[0]):
         preds.append(decoded_sequence[i, :, :].squeeze())
     else:
+      decoded_sequence = output_values[0][0]
       decoded_texts = self.tensor_to_chars(
           decoded_sequence,
           self.get_data_layer().params['idx2char'],

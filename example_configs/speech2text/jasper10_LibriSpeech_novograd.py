@@ -224,7 +224,9 @@ base_params = {
         "use_conv_mask": True,
         "drop_block_prob": 0.,
         "drop_block_index": -1,
-        "norm_in_block": True
+        "norm_in_block": True,
+        "my_bn": True,
+        "fused_bn": True
     },
 
     "decoder": FullyConnectedCTCDecoder,

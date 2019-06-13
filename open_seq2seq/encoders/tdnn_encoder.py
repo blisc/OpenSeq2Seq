@@ -34,6 +34,8 @@ class TDNNEncoder(Encoder):
         'drop_block_prob': float,
         'drop_block_index': int,
         'norm_in_block': bool,
+        'my_bn': bool,
+        'fused_bn': bool,
     })
 
   def __init__(self, params, model, name="w2l_encoder", mode='train'):
@@ -134,7 +136,7 @@ class TDNNEncoder(Encoder):
     drop_block_prob = self.params.get('drop_block_prob', 0.0)
     drop_block_index = self.params.get('drop_block_index', -1)
 
-    normalization_params = {"my_bn": True}
+    normalization_params = {"my_bn": self.params.get('my_bn', False)}
 
     if self.params.get("use_conv_mask", False):
       mask = tf.sequence_mask(
@@ -236,6 +238,7 @@ class TDNNEncoder(Encoder):
               data_format=data_format,
               drop_block_prob=drop_block_prob,
               drop_block=(drop_block_index == idx_convnet),
+              fused=self.params.get("fused_bn", True),
               **normalization_params
           )
         else:
@@ -253,6 +256,7 @@ class TDNNEncoder(Encoder):
               regularizer=regularizer,
               training=training,
               data_format=data_format,
+              fused=self.params.get("fused_bn", True),
           )
 
         conv_feats = tf.nn.dropout(x=conv_feats, keep_prob=dropout_keep)

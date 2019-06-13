@@ -47,7 +47,8 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
                         kernel_size, activation_fn, strides, padding,
                         regularizer, training, data_format, bn_momentum,
                         bn_epsilon, dilation=1,
-                        drop_block_prob=0.0, drop_block=False, my_bn=None):
+                        drop_block_prob=0.0, drop_block=False, my_bn=None,
+                        fused=True):
   layer = layers_dict[layer_type]
 
   if not isinstance(res_inputs, list):
@@ -87,7 +88,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
           axis=-1 if data_format == 'channels_last' else 1,
           momentum=bn_momentum,
           epsilon=bn_epsilon,
-          fused=False,
+          fused=fused,
       )
       if squeeze:
         res = tf.squeeze(res, axis=axis)
@@ -129,7 +130,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
         axis=-1 if data_format == 'channels_last' else 1,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
-        fused=False,
+        fused=fused,
     )
 
     if squeeze:
@@ -153,7 +154,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
 
 def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
                  strides, padding, regularizer, training, data_format,
-                 bn_momentum, bn_epsilon, dilation=1, my_bn=None):
+                 bn_momentum, bn_epsilon, dilation=1, my_bn=None, fused=True):
   """Helper function that applies convolution, batch norm and activation.
     Args:
       layer_type: the following types are supported
@@ -197,6 +198,7 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
         axis=-1 if data_format == 'channels_last' else 1,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
+        fused=fused,
     )
 
     if squeeze:
