@@ -77,7 +77,7 @@ class CTCLoss(Loss):
     # Compute the CTC loss
     # total_loss = tf.nn.ctc_loss(
     #     labels=dense_to_sparse(tgt_sequence, tgt_length),
-    #     inputs=probs,
+    #     inputs=logits,
     #     sequence_length=src_length,
     #     ignore_longer_outputs_than_inputs=True,
     # )
@@ -101,4 +101,5 @@ class CTCLoss(Loss):
 
     # Calculate the average loss across the batch
     avg_loss = tf.reduce_mean(total_loss)
+    # return avg_loss
     return avg_loss, grads

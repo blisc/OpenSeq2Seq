@@ -280,7 +280,7 @@ eval_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "dataset_files": [
-            "/data/librispeech/librivox-dev-clean.csv",
+            "/data/librispeech/librivox-dev-clean-256.csv",
         ],
         "shuffle": False,
     },
@@ -290,8 +290,16 @@ infer_params = {
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {
         "dataset_files": [
-            "/data/librispeech/librivox-test-clean.csv",
+            "/data/librispeech/librivox-dev-clean-256.csv",
         ],
+        "shuffle": False,
+    },
+}
+
+interactive_infer_params = {
+    "data_layer": Speech2TextDataLayer,
+    "data_layer_params": {
+        "dataset_files": [],
         "shuffle": False,
     },
 }

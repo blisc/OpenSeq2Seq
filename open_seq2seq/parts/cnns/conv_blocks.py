@@ -80,6 +80,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
         axis=-1 if data_format == 'channels_last' else 1,
         momentum=bn_momentum,
         epsilon=bn_epsilon,
+        fused=False,
     )
     if squeeze:
       res = tf.squeeze(res, axis=axis)
@@ -115,6 +116,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
       axis=-1 if data_format == 'channels_last' else 1,
       momentum=bn_momentum,
       epsilon=bn_epsilon,
+      fused=False,
   )
 
   if squeeze:

@@ -198,6 +198,7 @@ class Speech2Text(EncoderDecoderModel):
               "decoder_output": decoder_output,
               "target_tensors": target_tensors,
           }
+          # loss = self.loss_computator.compute_loss(loss_input_dict)
           loss, grads = self.loss_computator.compute_loss(loss_input_dict)
           model_outputs.append(grads)
       else:
@@ -302,8 +303,9 @@ class Speech2Text(EncoderDecoderModel):
       if self.get_data_layer().params.get('autoregressive', False):
         true_text = true_text[:-4]
 
-      # print('TRUE_TEXT: "{}"'.format(true_text))
-      # print('PRED_TEXT: "{}"'.format(pred_text))
+      # if sample_id == 0:
+      #   print('TRUE_TEXT: "{}"'.format(true_text))
+      #   print('PRED_TEXT: "{}"'.format(pred_text))
 
       total_word_lev += levenshtein(true_text.split(), pred_text.split())
       total_word_count += len(true_text.split())
@@ -312,7 +314,7 @@ class Speech2Text(EncoderDecoderModel):
 
   def infer(self, input_values, output_values):
     preds = []
-    decoded_sequence = output_values[0]
+    decoded_sequence = output_values[0][0]
 
     if self.dump_outputs:
       # decoded_sequence has 'time_major' shape: [T, B, C]
