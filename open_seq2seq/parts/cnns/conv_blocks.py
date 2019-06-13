@@ -72,6 +72,8 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
       axis = 1 if data_format == 'channels_last' else 2
       res = tf.expand_dims(res, axis=axis)  # NWC --> NHWC
       squeeze = True
+    old_dtype = res.dtype
+    res = tf.cast(res, tf.float32)
     res = tf.layers.batch_normalization(
         name=res_bn_name.format(name, i),
         inputs=res,
@@ -82,6 +84,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
         epsilon=bn_epsilon,
         fused=False,
     )
+    res = tf.cast(res, old_dtype)
     if squeeze:
       res = tf.squeeze(res, axis=axis)
 
@@ -108,6 +111,8 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
     conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
     squeeze = True
 
+  old_dtype = conv.dtype
+  conv = tf.cast(conv, tf.float32)
   bn = tf.layers.batch_normalization(
       name="{}/bn".format(name),
       inputs=conv,
@@ -119,6 +124,7 @@ def conv_bn_res_bn_actv(layer_type, name, inputs, res_inputs, filters,
       fused=False,
   )
 
+  bn = tf.cast(bn, old_dtype)
   if squeeze:
     bn = tf.squeeze(bn, axis=axis)
 
@@ -169,6 +175,8 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
     conv = tf.expand_dims(conv, axis=axis)  # NWC --> NHWC
     squeeze = True
 
+  old_dtype = conv.dtype
+  conv = tf.cast(conv, tf.float32)
   bn = tf.layers.batch_normalization(
       name="{}/bn".format(name),
       inputs=conv,
@@ -178,6 +186,7 @@ def conv_bn_actv(layer_type, name, inputs, filters, kernel_size, activation_fn,
       momentum=bn_momentum,
       epsilon=bn_epsilon,
   )
+  bn = tf.cast(bn, old_dtype)
 
   if squeeze:
     bn = tf.squeeze(bn, axis=axis)
