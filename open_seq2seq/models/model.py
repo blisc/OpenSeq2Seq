@@ -416,7 +416,6 @@ class Model:
             raise ValueError('Decoder outputs have to be either None or list')
           if self._mode == "train" or self._mode == "eval":
             losses.append(loss)
-            model_output = self._outputs[gpu_cnt]
 
       # end of for gpu_ind loop
       if self._mode == "train":
@@ -463,7 +462,6 @@ class Model:
           self.loss = loss
         if self._mode == "eval":
           self.eval_losses = [loss]
-        model_output = self._output
 
     try:
       self._num_objects_per_step = [self._get_num_objects_per_step(worker_id)
@@ -513,7 +511,6 @@ class Model:
           iter_size=self.params.get('iter_size', 1),
           skip_update_ph=self.skip_update_ph,
           model=self,
-          model_output=model_output,
       )
       tf.summary.scalar(name="train_loss", tensor=self.loss)
       if self.steps_in_epoch:

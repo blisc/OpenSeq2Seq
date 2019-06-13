@@ -22,6 +22,7 @@ class CTCLoss(Loss):
   def get_optional_params():
     return dict(Loss.get_optional_params(), **{
         'mask_nan': bool,
+        'tf_ctc_loss': bool,
     })
 
   def __init__(self, params, model, name="ctc_loss"):
@@ -74,27 +75,26 @@ class CTCLoss(Loss):
     src_length = input_dict['decoder_output']['src_length']
     probs = input_dict['decoder_output']['probs']
 
-    # Compute the CTC loss
-    # total_loss = tf.nn.ctc_loss(
-    #     labels=dense_to_sparse(tgt_sequence, tgt_length),
-    #     inputs=logits,
-    #     sequence_length=src_length,
-    #     ignore_longer_outputs_than_inputs=True,
-    # )
+    if self.params.get("tf_ctc_loss", True):
+      # Compute the CTC loss
+      total_loss = tf.nn.ctc_loss(
+          labels=dense_to_sparse(tgt_sequence, tgt_length),
+          inputs=logits,
+          sequence_length=src_length,
+          ignore_longer_outputs_than_inputs=True,
+      )
+      grads = None
 
-    my_ctc_loss = tf.load_op_library("/home/jasoli/tensorflow/bazel-bin/tensorflow/core/user_ops/my_ctc_loss.so")
+    else:
+      my_ctc_loss = tf.load_op_library("/home/jasoli/tensorflow/bazel-bin/tensorflow/core/user_ops/my_ctc_loss.so")
 
-    labels = dense_to_sparse(tgt_sequence, tgt_length)
-    total_loss, grads = my_ctc_loss.my_ctc_loss(
-        probs,
-        labels.indices,
-        labels.values,
-        src_length,
-        ignore_longer_outputs_than_inputs=True)
-
-    # @tf.RegisterGradient("MyCTCLoss")
-    # def _my_ctc_loss_grad(op, loss, grad):
-      # return grad, tf.zeros(labels.indices.shape), tf.zeros(labels.values.shape), tf.zeros(src_length.shape)
+      labels = dense_to_sparse(tgt_sequence, tgt_length)
+      total_loss, grads = my_ctc_loss.my_ctc_loss(
+          probs,
+          labels.indices,
+          labels.values,
+          src_length,
+          ignore_longer_outputs_than_inputs=True)
 
     if self._mask_nan:
       total_loss = mask_nans(total_loss)

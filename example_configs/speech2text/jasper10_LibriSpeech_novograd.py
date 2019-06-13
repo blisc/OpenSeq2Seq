@@ -246,7 +246,9 @@ base_params = {
         "infer_logits_to_pickle": False,
     },
     "loss": CTCLoss,
-    "loss_params": {},
+    "loss_params": {
+        "tf_ctc_loss": True,
+    },
 
     "data_layer": Speech2TextDataLayer,
     "data_layer_params": {

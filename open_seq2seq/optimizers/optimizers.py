@@ -201,13 +201,15 @@ def optimize_loss(loss,
       opt = MixedPrecisionOptimizerWrapper(opt, loss_scale=loss_scaling)
 
     grad_loss = None
-    if model_output is not None:
-      loss = model_output[2]
+    model_output = model.get_output_tensors()
+    if model_output[-1] is not None:
+      loss = model_output[2] # log_softmax output
       grad_loss = model_output[3]
+      print("Computing gradients with grad_loss")
     # Compute gradients.
     grads_and_vars = opt.compute_gradients(
         loss, colocate_gradients_with_ops=True, var_list=var_list, grad_loss=grad_loss
-    )    
+    )
 
     if on_horovod:
       if iter_size > 1:
