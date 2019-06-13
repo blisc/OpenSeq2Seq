@@ -134,7 +134,7 @@ class TDNNEncoder(Encoder):
     drop_block_prob = self.params.get('drop_block_prob', 0.0)
     drop_block_index = self.params.get('drop_block_index', -1)
 
-    normalization_params = {}
+    normalization_params = {"my_bn": True}
 
     if self.params.get("use_conv_mask", False):
       mask = tf.sequence_mask(
