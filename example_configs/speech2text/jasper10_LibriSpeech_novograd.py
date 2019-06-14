@@ -225,7 +225,7 @@ base_params = {
         "drop_block_prob": 0.,
         "drop_block_index": -1,
         "norm_in_block": True,
-        "my_bn": True,
+        "my_bn": False,
         "fused_bn": True
     },
 
