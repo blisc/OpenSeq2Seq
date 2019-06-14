@@ -200,7 +200,7 @@ class Speech2Text(EncoderDecoderModel):
           }
           # loss = self.loss_computator.compute_loss(loss_input_dict)
           loss, grads = self.loss_computator.compute_loss(loss_input_dict)
-          if grads:
+          if grads is not None:
             model_outputs.append(grads)
       else:
         deco_print("Inference Mode. Loss part of graph isn't built.")

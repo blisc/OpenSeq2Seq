@@ -247,7 +247,7 @@ base_params = {
     },
     "loss": CTCLoss,
     "loss_params": {
-        "tf_ctc_loss": True,
+        "tf_ctc_loss": False,
     },
 
     "data_layer": Speech2TextDataLayer,

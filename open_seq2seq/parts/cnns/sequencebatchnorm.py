@@ -314,14 +314,8 @@ class SequenceBatchNormalization(tf.layers.Layer, tf.keras.layers.Layer):
         value = tf.squeeze(value, axis=0)
         return self._assign_moving_average(var, value, self.momentum)
 
-      mean_update = tf_utils.smart_cond(
-          training,
-          lambda: _do_update(self.moving_mean, mean),
-          lambda: self.moving_mean)
-      variance_update = tf_utils.smart_cond(
-          training,
-          lambda: _do_update(self.moving_variance, variance),
-          lambda: self.moving_variance)
+      mean_update = lambda: _do_update(self.moving_mean, mean)
+      variance_update = lambda: _do_update(self.moving_variance, variance)
       self.add_update(mean_update, inputs=True)
       self.add_update(variance_update, inputs=True)
 
