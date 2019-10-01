@@ -76,7 +76,7 @@ base_params = {
     "optimizer_params": {},
     "lr_policy": poly_decay,
     "lr_policy_params": {
-        "learning_rate": 0.01,
+        "learning_rate": 0.001,
         "min_lr": 1e-5,
         "power": 2.0,
     },
