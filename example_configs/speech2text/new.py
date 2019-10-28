@@ -1,55 +1,29 @@
-base_model = Speech2Text
-base_params = {
-    "num_epochs": 400,
-    "num_gpus": 8,
-    "batch_size_per_gpu": 32,
-    
-    "optimizer": NovoGrad,
-    "optimizer_params": {...},
-    "lr_policy": poly_decay,
-    "lr_policy_params": {...},
-    "loss": CTCLoss,
-    "loss_params": {...},
-    "decoder": FullyConnectedCTCDecoder,
-    "decoder_params": {...},
-    "encoder": TDNNEncoder,
-    "encoder_params": {...},
-    "data_layer": Speech2TextDataLayer,
-    "data_layer_params": {...},
-}
-
-train_params = {
-    "data_layer": Speech2TextDataLayer,
-    "data_layer_params": {
-        "augmentation": {
-            'speed_perturbation_ratio': [-1.10, 1., 1.10],
-        },
-        "dataset_files": [
-            "/data/librispeech/librivox-train-clean-100.csv",
-            "/data/librispeech/librivox-train-clean-360.csv",
-            "/data/librispeech/librivox-train-other-500.csv"
-        ],
-        "max_duration": 16.7,
-        "shuffle": True,
-    },
-}
-
-eval_params = {
-    "data_layer": Speech2TextDataLayer,
-    "data_layer_params": {
-        "dataset_files": [
-            "/data/librispeech/librivox-dev-clean.csv",
-        ],
-        "shuffle": False,
-    },
-}
-
-infer_params = {
-    "data_layer": Speech2TextDataLayer,
-    "data_layer_params": {
-        "dataset_files": [
-            "/mnt/hdd/data/Librispeech/librispeech/librivox-dev-clean-2.csv",
-        ],
-        "shuffle": False,
-    },
-}
+"encoder": TDNNEncoder,
+"encoder_params": {
+    "convnet_layers": [
+        {"repeat": 1, "kernel_size": [11], "stride": [2],
+         "num_channels": 256, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [11],
+         "num_channels": 256, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [13],
+         "num_channels": 256, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [13],
+         "num_channels": 384, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [13],
+         "num_channels": 384, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [17],
+         "num_channels": 512, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [17],
+         "num_channels": 512, "dropout_keep_prob": 0.8},
+        {"repeat": 5, "kernel_size": [21],
+         "num_channels": 640, "dropout_keep_prob": 0.7},
+        {"repeat": 5, "kernel_size": [21],
+         "num_channels": 640, "dropout_keep_prob": 0.7},
+        {"repeat": 5, "kernel_size": [25],
+         "num_channels": 768, "dropout_keep_prob": 0.7},
+        {"repeat": 5, "kernel_size": [25],
+         "num_channels": 768, "dropout_keep_prob": 0.7},
+        {"repeat": 1, "kernel_size": [29], "dilation":[2],
+         "num_channels": 896, "dropout_keep_prob": 0.6},
+        {"repeat": 1, "kernel_size": [1],
+         "num_channels": 1024, "dropout_keep_prob": 0.6}]}
